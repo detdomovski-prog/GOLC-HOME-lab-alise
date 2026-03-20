@@ -1,0 +1,620 @@
+[
+    {
+        "id": "83778fd0b4ed61b6",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/v1.0",
+        "method": "head",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 790,
+        "y": 420,
+        "wires": [
+            [
+                "0c31cda8cf9b832d",
+                "46ea903cd4e4962e"
+            ]
+        ]
+    },
+    {
+        "id": "0c31cda8cf9b832d",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 33",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 980,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "46ea903cd4e4962e",
+        "type": "http response",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1270,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "8f6adb0da0d36d2b",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/token",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 780,
+        "y": 560,
+        "wires": [
+            [
+                "fe9d25ed98ea85b3"
+            ]
+        ]
+    },
+    {
+        "id": "fe9d25ed98ea85b3",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 24",
+        "func": "msg.headers = {\n  \"Content-Type\": \"application/json\"\n};\n\nmsg.payload = {\n  access_token: \"test-token\",\n  refresh_token: \"test-refresh\",\n  token_type: \"bearer\",\n  expires_in: 3600\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 560,
+        "wires": [
+            [
+                "46ea903cd4e4962e",
+                "7ee5c4131bb3f70a"
+            ]
+        ]
+    },
+    {
+        "id": "6e414bee646c2a29",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/v1.0/user/devices",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 810,
+        "y": 600,
+        "wires": [
+            [
+                "4e64c746c4c6ae26"
+            ]
+        ]
+    },
+    {
+        "id": "4e64c746c4c6ae26",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 25",
+        "func": "const requestId = msg.req.headers[\"x-request-id\"] || msg._msgid;\nmsg.statusCode = 200;\n\nmsg.headers = {\n  \"Content-Type\": \"application/json\"\n};\n\nmsg.payload = {\n  request_id: requestId,\n  payload: {\n    user_id: \"test-user\",\n    devices: [\n      {\n        id: \"lamp1\",\n        name: \"Торшер\",\n        type: \"devices.types.light\",\n        status_info: {\n          reportable: true\n        },\n        capabilities: [\n          {\n            type: \"devices.capabilities.on_off\",\n            retrievable: true\n          }\n        ],\n        device_info: {\n          manufacturer: \"DIY\",\n          model: \"lamp1\",\n          hw_version: \"1.0\",\n          sw_version: \"1.0\"\n        }\n      }\n    ]\n  }\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 600,
+        "wires": [
+            [
+                "46ea903cd4e4962e",
+                "14277369d5d48ed4"
+            ]
+        ]
+    },
+    {
+        "id": "6e2ad0fc9945f9e9",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/v1.0/user/devices/query",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 810,
+        "y": 680,
+        "wires": [
+            [
+                "154d425497e857bc"
+            ]
+        ]
+    },
+    {
+        "id": "154d425497e857bc",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 30",
+        "func": "const requestId = msg.req.headers[\"x-request-id\"] || msg._msgid;\nmsg.statusCode = 200;\n\nmsg.headers = {\n  \"Content-Type\": \"application/json\"\n};\n\nmsg.payload = {\n  request_id: requestId,\n  payload: {\n    devices: [\n      {\n        id: \"lamp1\",\n        capabilities: [\n          {\n            type: \"devices.capabilities.on_off\",\n            state: {\n              instance: \"on\",\n              value: true\n            }\n          }\n        ]\n      }\n    ]\n  }\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1070,
+        "y": 660,
+        "wires": [
+            [
+                "46ea903cd4e4962e",
+                "0f5125778b947d55"
+            ]
+        ]
+    },
+    {
+        "id": "b70f7cc0ff2d5668",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/v1.0/user/devices/action",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 810,
+        "y": 720,
+        "wires": [
+            [
+                "a0f55838b5706eb7"
+            ]
+        ]
+    },
+    {
+        "id": "a0f55838b5706eb7",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 31",
+        "func": "const requestId = msg.req.headers[\"x-request-id\"] || msg._msgid;\nlet auth = msg.req.headers.authorization;\n\nif (!auth || auth !== \"Bearer test-token\") {\n    msg.statusCode = 401;\n    msg.payload = {\n        error: \"Unauthorized\"\n    };\n    return msg;\n}\nif (!auth || !auth.includes(\"test-token\")) {\n    msg.statusCode = 401;\n    msg.payload = {\n        error: \"unauthorized\"\n    };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.headers = {\n  \"Content-Type\": \"application/json\"\n};\n\nmsg.payload = {\n    request_id: requestId,\n    payload: {\n        devices: [\n            {\n                id: \"lamp1\",\n                capabilities: [\n                    {\n                        type: \"devices.capabilities.on_off\",\n                        state: {\n                          instance: \"on\",\n                          value: true\n                        },\n                        action_result: {\n                          status: \"DONE\"\n                        }\n                    }\n                ],\n                action_result: {\n                  status: \"DONE\"\n                }\n            }\n        ]\n    }\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1090,
+        "y": 720,
+        "wires": [
+            [
+                "46ea903cd4e4962e",
+                "692011b04dabc7dd"
+            ]
+        ]
+    },
+    {
+        "id": "43e9c52662be88f8",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/v1.0/user/unlink",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 790,
+        "y": 780,
+        "wires": [
+            [
+                "497b888a7c78cd43"
+            ]
+        ]
+    },
+    {
+        "id": "497b888a7c78cd43",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 32",
+        "func": "const requestId = msg.req.headers[\"x-request-id\"] || msg._msgid;\nmsg.statusCode = 200;\nmsg.headers = {\n  \"Content-Type\": \"application/json\"\n};\nmsg.payload = {\n  request_id: requestId\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1070,
+        "y": 780,
+        "wires": [
+            [
+                "46ea903cd4e4962e",
+                "b55cc1e13cdfd398"
+            ]
+        ]
+    },
+    {
+        "id": "1f33c0900ecfcf4a",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 20",
+        "func": "let auth = msg.req.headers.authorization;\n\nif (!auth || auth !== \"Bearer test-token\") {\n    msg.statusCode = 401;\n    msg.payload = {\n        error: \"Unauthorized\"\n    };\n    return msg;\n}\n\n\n// принудительно читаем тело\nlet body = msg.payload;\nnode.warn(msg.req.headers);\n\nif (!auth || !auth.includes(\"test-token\")) {\n    msg.statusCode = 401;\n    msg.payload = {\n        error: \"unauthorized\"\n    };\n    return msg;\n}\n\nmsg.payload = {\n    request_id: msg._msgid,\n    payload: {\n        devices: [\n            {\n                id: \"lamp1\",\n                name: \"Торшер\",\n                type: \"devices.types.light\",\n                capabilities: [\n                    {\n                        type: \"devices.capabilities.on_off\"\n                    }\n                ]\n            }\n        ]\n    }\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 950,
+        "y": 840,
+        "wires": [
+            [
+                "46ea903cd4e4962e",
+                "fca1edaf366381f9"
+            ]
+        ]
+    },
+    {
+        "id": "6c1af7b3b1b0834e",
+        "type": "http response",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1210,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "dfcdaef9e2796092",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "/v1.0/info",
+        "url": "/v1.0/info",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 720,
+        "y": 900,
+        "wires": [
+            [
+                "40201452d69db586"
+            ]
+        ]
+    },
+    {
+        "id": "40201452d69db586",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 33",
+        "func": "msg.payload = {\n    request_id: msg._msgid,\n    payload: {\n        devices: [\n            {\n                id: \"lamp1\",\n                name: \"Торшер\",\n                type: \"devices.types.light\",\n                capabilities: [\n                    {\n                        type: \"devices.capabilities.on_off\"\n                    }\n                ]\n            }\n        ]\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 900,
+        "wires": [
+            [
+                "6c1af7b3b1b0834e",
+                "e13ffa89ed55fd45"
+            ]
+        ]
+    },
+    {
+        "id": "e13ffa89ed55fd45",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 34",
+        "active": true,
+        "tosidebar": false,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1120,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "b1dd946ad1c47ed9",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/callback",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 1460,
+        "y": 500,
+        "wires": [
+            [
+                "1cd0c27a1c688096"
+            ]
+        ]
+    },
+    {
+        "id": "b05dc7556aacef18",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 34",
+        "func": "msg.statusCode = 302;\nmsg.headers = {\n  Location: msg.req.query.state + \"?code=123\"\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1810,
+        "y": 640,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d5dc04d1d46c9890",
+        "type": "http response",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1910,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "e8a1e75290b6f284",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 23",
+        "func": "msg.headers = {\n  \"Content-Type\": \"text/html\"\n};\n\nmsg.payload = `\n<html>\n  <head>\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  </head>\n  <body style=\"display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;\">\n    <form method=\"GET\" action=\"/endpoint/callback\">\n      <input type=\"hidden\" name=\"state\" value=\"${msg.req.query.state}\" />\n      <button style=\"font-size:20px;padding:15px 30px;\">Войти</button>\n    </form>\n  </body>\n</html>\n`;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1650,
+        "y": 440,
+        "wires": [
+            [
+                "d5dc04d1d46c9890",
+                "d8e2b1a3e342f603"
+            ]
+        ]
+    },
+    {
+        "id": "94439d5122a81e68",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/auth",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 1450,
+        "y": 440,
+        "wires": [
+            [
+                "e8a1e75290b6f284"
+            ]
+        ]
+    },
+    {
+        "id": "1cd0c27a1c688096",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 39",
+        "func": "let state = msg.req.query.state;\n\nmsg.statusCode = 302;\nmsg.headers = {\n  Location: state + \"?code=123\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1710,
+        "y": 540,
+        "wires": [
+            [
+                "d5dc04d1d46c9890",
+                "693984adf94f99c3"
+            ]
+        ]
+    },
+    {
+        "id": "7e06dfcb2815bc2e",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 40",
+        "func": "msg.payload = {\n  access_token: \"test-token\",\n  token_type: \"bearer\",\n  expires_in: 3600\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "0173a86062a1622e",
+        "type": "function",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "function 41",
+        "func": "msg.payload = {\n    request_id: msg._msgid,\n    payload: {\n        devices: [\n            {\n                id: \"lamp1\",\n                name: \"Торшер\",\n                type: \"devices.types.light\",\n                capabilities: [\n                    {\n                        type: \"devices.capabilities.on_off\"\n                    }\n                ]\n            }\n        ]\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1150,
+        "y": 840,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fca1edaf366381f9",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 35",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1130,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "b55cc1e13cdfd398",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 36",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1250,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "692011b04dabc7dd",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 37",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1330,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "0f5125778b947d55",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 38",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1290,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "7ee5c4131bb3f70a",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 39",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1350,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "693984adf94f99c3",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 40",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1870,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "d8e2b1a3e342f603",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 41",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1810,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "14277369d5d48ed4",
+        "type": "debug",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "debug 43",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1590,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "88e9335c3632b5c4",
+        "type": "http in",
+        "z": "dbfcf3b9cb8624ed",
+        "name": "",
+        "url": "/v1.0/user/devices",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 810,
+        "y": 640,
+        "wires": [
+            [
+                "4e64c746c4c6ae26"
+            ]
+        ]
+    }
+]
