@@ -73,6 +73,36 @@ const devices = {
       temperature: 22.5,
       humidity: 48
     }
+  },
+  door1: {
+    id: 'door1',
+    name: 'Датчик открытия двери',
+    type: 'devices.types.sensor.open',
+    status_info: { reportable: true },
+    capabilities: [],
+    properties: [
+      {
+        type: 'devices.properties.event',
+        retrievable: true,
+        reportable: true,
+        parameters: {
+          instance: 'open',
+          events: [
+            { value: 'opened' },
+            { value: 'closed' }
+          ]
+        }
+      }
+    ],
+    device_info: {
+      manufacturer: 'DIY',
+      model: 'door1',
+      hw_version: '1.0',
+      sw_version: '1.0'
+    },
+    state: {
+      opened: false
+    }
   }
 };
 
@@ -126,6 +156,15 @@ exports.queryDevices = function(ids) {
           state: {
             instance: 'humidity',
             value: Number(d.state.humidity)
+          }
+        };
+      }
+      if (p.type === 'devices.properties.event' && p.parameters && p.parameters.instance === 'open') {
+        return {
+          type: p.type,
+          state: {
+            instance: 'open',
+            value: d.state.opened ? 'opened' : 'closed'
           }
         };
       }
