@@ -1,0 +1,82 @@
+[
+  {
+    "id": "inject_reg",
+    "type": "inject",
+    "z": "flow1",
+    "name": "Register virtual lamp+temp",
+    "props": [],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 200,
+    "y": 120,
+    "wires": [["alice_register"]]
+  },
+  {
+    "id": "alice_register",
+    "type": "alice-device",
+    "z": "flow1",
+    "name": "Register device",
+    "backendUrl": "http://localhost:3000",
+    "internalToken": "local-internal-token",
+    "mode": "register",
+    "deviceId": "virtual_lamp_1",
+    "deviceName": "Виртуальная лампа",
+    "deviceType": "devices.types.light",
+    "withOnOff": true,
+    "withTemperature": true,
+    "withHumidity": false,
+    "withOpenSensor": false,
+    "x": 460,
+    "y": 120,
+    "wires": [["debug_out"]]
+  },
+  {
+    "id": "inject_state",
+    "type": "inject",
+    "z": "flow1",
+    "name": "State update temp=27",
+    "props": [
+      { "p": "state", "v": "{\"on\":true,\"temperature\":27}", "vt": "json" }
+    ],
+    "x": 190,
+    "y": 180,
+    "wires": [["alice_state"]]
+  },
+  {
+    "id": "alice_state",
+    "type": "alice-device",
+    "z": "flow1",
+    "name": "State update",
+    "backendUrl": "http://localhost:3000",
+    "internalToken": "local-internal-token",
+    "mode": "state",
+    "deviceId": "virtual_lamp_1",
+    "deviceName": "",
+    "deviceType": "devices.types.light",
+    "withOnOff": true,
+    "withTemperature": false,
+    "withHumidity": false,
+    "withOpenSensor": false,
+    "x": 440,
+    "y": 180,
+    "wires": [["debug_out"]]
+  },
+  {
+    "id": "debug_out",
+    "type": "debug",
+    "z": "flow1",
+    "name": "result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 680,
+    "y": 150,
+    "wires": []
+  }
+]

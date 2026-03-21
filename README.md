@@ -87,4 +87,61 @@ curl -X POST -H "Authorization: Bearer test-token" -H "X-Request-Id: rq3" http:/
 - В продакшене настраивайте HTTPS и безопасное хранение секретов.
 - Для интеграции через Cloudflare Tunnel используйте `url.txt` для текущего публичного URL (не хардкодьте адреса).
 
-Если готовы, дальше я подготовлю инструкции по настройке `cloudflared` ingress, чтобы пробрасывать только путь `/endpoint/*` к этому сервису и не попадать на Home Assistant с Basic‑auth.
+## Free Node-RED Bridge (аналог для личного использования)
+
+Добавлены внутренние endpoint'ы для Node-RED, чтобы обновлять состояния устройств и читать их, без платных нод:
+
+- `GET /internal/devices/state?ids=lamp1,temp1`
+- `POST /internal/devices/lamp1/state`
+- `POST /internal/devices/bulk-state`
+
+Во всех запросах нужен заголовок `X-Internal-Token: <INTERNAL_TOKEN>`.
+
+Примеры:
+
+```bash
+curl -H "X-Internal-Token: local-internal-token" \
+	"http://localhost:3000/internal/devices/state?ids=temp1,door1"
+```
+
+```bash
+curl -X POST "http://localhost:3000/internal/devices/temp1/state" \
+	-H "X-Internal-Token: local-internal-token" \
+	-H "Content-Type: application/json" \
+	-d '{"state":{"temperature":24.2,"humidity":51}}'
+```
+
+```bash
+curl -X POST "http://localhost:3000/internal/devices/bulk-state" \
+	-H "X-Internal-Token: local-internal-token" \
+	-H "Content-Type: application/json" \
+	-d '{"devices":[{"id":"lamp1","state":{"on":true}},{"id":"door1","state":{"opened":true}}]}'
+```
+
+Как связать с Node-RED:
+
+1. В Node-RED используйте `inject/function -> http request`.
+2. Для датчиков отправляйте `POST /internal/devices/:id/state` при изменении значений.
+3. Для чтения текущего состояния вызывайте `GET /internal/devices/state`.
+4. Яндекс продолжает работать через стандартные `GET/POST /v1.0/user/*` endpoint'ы.
+
+## Node-RED npm-узел (как `node-red-contrib-*`)
+
+Для установки в Node-RED добавлен пакет:
+
+- `nodered/node-red-contrib-golc-alice`
+
+Установка в окружении Node-RED (папка `~/.node-red`):
+
+```bash
+cd ~/.node-red
+npm install /opt/GOLC-HOME-lab-alise/nodered/node-red-contrib-golc-alice
+```
+
+После перезапуска Node-RED появится узел `alice-device`.
+
+Быстрый сценарий:
+
+1. Узел `alice-device` в режиме `register` — регистрирует виртуальное устройство.
+2. Второй `alice-device` в режиме `state` — обновляет состояние (`msg.state`).
+3. В Яндексе запускаете «Обновить устройства» и видите новые объекты.

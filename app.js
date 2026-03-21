@@ -3,6 +3,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const devicesRouter = require('./routes/devices');
 const authRouter = require('./routes/auth');
+const internalRouter = require('./routes/internal');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,7 +42,8 @@ app.use((req, res, next) => {
     req.path === '/endpoint/token' ||
     req.path === '/auth' ||
     req.path === '/endpoint/auth' ||
-    req.path === '/ping'
+    req.path === '/ping' ||
+    req.path.startsWith('/internal/')
   ) return next();
 
   const auth = req.headers['authorization'];
@@ -70,6 +72,7 @@ app.use((req, res, next) => {
 
 app.get('/ping', (req, res) => res.send('ok'));
 app.use('/', authRouter);
+app.use('/', internalRouter);
 app.use('/v1.0', devicesRouter);
 
 app.listen(PORT, () => {

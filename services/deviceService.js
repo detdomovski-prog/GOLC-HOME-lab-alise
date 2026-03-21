@@ -106,25 +106,76 @@ const devices = {
   }
 };
 
-exports.getDevicesList = function() {
-  return Object.values(devices).map(d => ({
+const virtualDevices = {};
+
+function getDeviceById(id) {
+  return devices[id] || virtualDevices[id] || null;
+}
+
+function getAllDeviceIds() {
+  return [...Object.keys(devices), ...Object.keys(virtualDevices)];
+}
+
+function mapDeviceForList(d) {
+  return {
     id: d.id,
     name: d.name,
     type: d.type,
-    status_info: d.status_info,
-    capabilities: d.capabilities,
+    status_info: d.status_info || { reportable: true },
+    capabilities: d.capabilities || [],
     properties: d.properties || [],
-    device_info: d.device_info
-  }));
+    device_info: d.device_info || {
+      manufacturer: 'DIY',
+      model: d.id,
+      hw_version: '1.0',
+      sw_version: '1.0'
+    }
+  };
+}
+
+function buildPropertyState(device, propertyDef) {
+  const params = propertyDef.parameters || {};
+  const instance = params.instance;
+  const state = device.state || {};
+
+  if (propertyDef.type === 'devices.properties.float') {
+    const value = Number(state[instance]);
+    return {
+      type: propertyDef.type,
+      state: {
+        instance,
+        value: Number.isFinite(value) ? value : 0
+      }
+    };
+  }
+
+  if (propertyDef.type === 'devices.properties.event') {
+    let value = state[instance];
+    if (instance === 'open' && typeof value === 'undefined') {
+      value = state.opened ? 'opened' : 'closed';
+    }
+    return {
+      type: propertyDef.type,
+      state: {
+        instance,
+        value: typeof value === 'undefined' ? null : value
+      }
+    };
+  }
+
+  return { type: propertyDef.type };
+}
+
+exports.getDevicesList = function() {
+  return getAllDeviceIds().map(id => mapDeviceForList(getDeviceById(id)));
 };
 
 exports.queryDevices = function(ids) {
   if (!ids || ids.length === 0) {
-    // return all
-    ids = Object.keys(devices);
+    ids = getAllDeviceIds();
   }
   return ids.map(id => {
-    const d = devices[id];
+    const d = getDeviceById(id);
     if (!d) {
       return {
         id,
@@ -133,43 +184,14 @@ exports.queryDevices = function(ids) {
       };
     }
     // Build capabilities states
-    const caps = d.capabilities.map(c => {
+    const caps = (d.capabilities || []).map(c => {
       if (c.type === 'devices.capabilities.on_off') {
         return { type: c.type, state: { instance: 'on', value: !!d.state.on } };
       }
       return { type: c.type };
     });
 
-    const props = (d.properties || []).map(p => {
-      if (p.type === 'devices.properties.float' && p.parameters && p.parameters.instance === 'temperature') {
-        return {
-          type: p.type,
-          state: {
-            instance: 'temperature',
-            value: Number(d.state.temperature)
-          }
-        };
-      }
-      if (p.type === 'devices.properties.float' && p.parameters && p.parameters.instance === 'humidity') {
-        return {
-          type: p.type,
-          state: {
-            instance: 'humidity',
-            value: Number(d.state.humidity)
-          }
-        };
-      }
-      if (p.type === 'devices.properties.event' && p.parameters && p.parameters.instance === 'open') {
-        return {
-          type: p.type,
-          state: {
-            instance: 'open',
-            value: d.state.opened ? 'opened' : 'closed'
-          }
-        };
-      }
-      return { type: p.type };
-    });
+    const props = (d.properties || []).map(p => buildPropertyState(d, p));
 
     return { id: d.id, capabilities: caps, properties: props };
   });
@@ -182,7 +204,7 @@ exports.applyActions = function(body) {
 
   for (const dev of devicesArray) {
     const id = dev.id;
-    const d = devices[id];
+    const d = getDeviceById(id);
     if (!d) {
       results.push({ id, action_result: { status: 'ERROR', error_code: 'DEVICE_NOT_FOUND' } });
       continue;
@@ -242,4 +264,87 @@ exports.applyActions = function(body) {
   }
 
   return results;
+};
+
+exports.updateDeviceState = function(id, patch) {
+  const d = getDeviceById(id);
+  if (!d) return null;
+
+  const nextState = patch || {};
+
+  if (Object.prototype.hasOwnProperty.call(nextState, 'on')) {
+    d.state.on = !!nextState.on;
+  }
+  if (Object.prototype.hasOwnProperty.call(nextState, 'temperature')) {
+    d.state.temperature = Number(nextState.temperature);
+  }
+  if (Object.prototype.hasOwnProperty.call(nextState, 'humidity')) {
+    d.state.humidity = Number(nextState.humidity);
+  }
+  if (Object.prototype.hasOwnProperty.call(nextState, 'opened')) {
+    d.state.opened = !!nextState.opened;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(nextState, 'open')) {
+    d.state.open = nextState.open;
+  }
+
+  for (const key of Object.keys(nextState)) {
+    if (!Object.prototype.hasOwnProperty.call(d.state, key)) {
+      d.state[key] = nextState[key];
+    }
+  }
+
+  return { id: d.id, state: { ...d.state } };
+};
+
+exports.getStateSnapshot = function(ids) {
+  const targetIds = Array.isArray(ids) && ids.length ? ids : getAllDeviceIds();
+
+  return targetIds.map(id => {
+    const d = getDeviceById(id);
+    if (!d) {
+      return { id, error_code: 'DEVICE_NOT_FOUND', error_message: 'Device not found' };
+    }
+    return { id: d.id, state: { ...d.state } };
+  });
+};
+
+exports.registerVirtualDevices = function(items) {
+  const devicesList = Array.isArray(items) ? items : [];
+
+  return devicesList.map(item => {
+    const id = item && item.id ? String(item.id) : '';
+    if (!id) {
+      return { id: null, error_code: 'INVALID_DEVICE', error_message: 'id is required' };
+    }
+
+    virtualDevices[id] = {
+      id,
+      name: item.name || id,
+      type: item.type || 'devices.types.other',
+      status_info: item.status_info || { reportable: true },
+      capabilities: Array.isArray(item.capabilities) ? item.capabilities : [],
+      properties: Array.isArray(item.properties) ? item.properties : [],
+      device_info: item.device_info || {
+        manufacturer: 'Node-RED',
+        model: id,
+        hw_version: '1.0',
+        sw_version: '1.0'
+      },
+      state: item.state && typeof item.state === 'object' ? { ...item.state } : {}
+    };
+
+    return { id, status: 'registered' };
+  });
+};
+
+exports.listVirtualDevices = function() {
+  return Object.values(virtualDevices).map(d => mapDeviceForList(d));
+};
+
+exports.deleteVirtualDevice = function(id) {
+  if (!virtualDevices[id]) return false;
+  delete virtualDevices[id];
+  return true;
 };

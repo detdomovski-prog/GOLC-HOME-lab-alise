@@ -1,0 +1,82 @@
+<script type="text/javascript">
+  RED.nodes.registerType('alice-device', {
+    category: 'function',
+    color: '#6ab7ff',
+    defaults: {
+      name: { value: '' },
+      backendUrl: { value: 'http://localhost:3000', required: true },
+      internalToken: { value: 'local-internal-token', required: true },
+      mode: { value: 'register', required: true },
+      deviceId: { value: '' },
+      deviceName: { value: '' },
+      deviceType: { value: 'devices.types.light' },
+      withOnOff: { value: true },
+      withTemperature: { value: false },
+      withHumidity: { value: false },
+      withOpenSensor: { value: false }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'bridge.svg',
+    label: function () {
+      return this.name || 'alice-device';
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="alice-device">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="alice-device" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-backendUrl">Backend URL</label>
+    <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-internalToken">Internal Token</label>
+    <input type="text" id="node-input-internalToken" placeholder="local-internal-token" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-mode">Mode</label>
+    <select id="node-input-mode">
+      <option value="register">register device</option>
+      <option value="state">update state</option>
+    </select>
+  </div>
+  <hr />
+  <div class="form-row">
+    <label for="node-input-deviceId">Device ID</label>
+    <input type="text" id="node-input-deviceId" placeholder="lamp_virtual_1" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-deviceName">Device Name</label>
+    <input type="text" id="node-input-deviceName" placeholder="Лампа кухня" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-deviceType">Device Type</label>
+    <input type="text" id="node-input-deviceType" placeholder="devices.types.light" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-withOnOff">on/off</label>
+    <input type="checkbox" id="node-input-withOnOff" style="width:auto;" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-withTemperature">temperature</label>
+    <input type="checkbox" id="node-input-withTemperature" style="width:auto;" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-withHumidity">humidity</label>
+    <input type="checkbox" id="node-input-withHumidity" style="width:auto;" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-withOpenSensor">open sensor</label>
+    <input type="checkbox" id="node-input-withOpenSensor" style="width:auto;" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="alice-device">
+  <p>DIY node for GOLC Alice backend.</p>
+  <p><b>register</b>: creates/updates virtual device in backend.</p>
+  <p><b>state</b>: updates device state from <code>msg.state</code> or <code>msg.payload</code>.</p>
+</script>
