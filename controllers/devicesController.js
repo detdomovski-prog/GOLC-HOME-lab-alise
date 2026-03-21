@@ -11,8 +11,8 @@ exports.getDevices = (req, res) => {
 exports.queryDevices = (req, res) => {
   const requestId = req.requestId;
   const body = req.body || {};
-  // expected: { devices: [{ id: 'lamp1' }...] }
-  const ids = (body.devices || []).map(d => d.id);
+  const devicesArray = (body.payload && body.payload.devices) || body.devices || [];
+  const ids = devicesArray.map(d => d.id);
   const states = deviceService.queryDevices(ids);
   res.status(200).json({ request_id: requestId, payload: { devices: states } });
 };

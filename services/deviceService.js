@@ -52,11 +52,8 @@ exports.queryDevices = function(ids) {
 };
 
 exports.applyActions = function(body) {
-  // body should contain payload.devices or actions depending on client
-  // We'll try to support both shapes: { devices: [...] } or { actions: [...] }
+  // body may contain payload.devices or devices depending on client
   const results = [];
-
-  // If payload structure like { devices: [{ id, capabilities: [...] }] }
   const devicesArray = (body.payload && body.payload.devices) || body.devices || [];
 
   for (const dev of devicesArray) {
@@ -67,24 +64,31 @@ exports.applyActions = function(body) {
       continue;
     }
     const capsRes = [];
-    if (dev.capabilities && Array.isArray(dev.capabilities)) {
-      for (const cap of dev.capabilities) {
+    const requestedCapabilities = dev.capabilities || dev.actions || [];
+    if (Array.isArray(requestedCapabilities)) {
+      for (const cap of requestedCapabilities) {
         if (cap.type === 'devices.capabilities.on_off') {
-          // If requested state provided
-          const value = cap.state && cap.state.value;
+          let value = cap.state && cap.state.value;
+          if (value === 'true') value = true;
+          if (value === 'false') value = false;
+
           if (typeof value === 'boolean') {
             d.state.on = value;
             capsRes.push({ type: cap.type, state: { instance: 'on', value: d.state.on }, action_result: { status: 'DONE' } });
           } else {
-            // if no clear value, return current
-            capsRes.push({ type: cap.type, state: { instance: 'on', value: d.state.on }, action_result: { status: 'ERROR' } });
+            capsRes.push({
+              type: cap.type,
+              state: { instance: 'on', value: d.state.on },
+              action_result: { status: 'ERROR', error_code: 'INVALID_VALUE' }
+            });
           }
         } else {
-          capsRes.push({ type: cap.type, action_result: { status: 'ERROR' } });
+          capsRes.push({ type: cap.type, action_result: { status: 'ERROR', error_code: 'NOT_SUPPORTED_IN_CURRENT_MODE' } });
         }
       }
     }
-    results.push({ id: d.id, capabilities: capsRes, action_result: { status: 'DONE' } });
+    const hasErrors = capsRes.some(cap => cap.action_result && cap.action_result.status === 'ERROR');
+    results.push({ id: d.id, capabilities: capsRes, action_result: { status: hasErrors ? 'ERROR' : 'DONE' } });
   }
 
   return results;
