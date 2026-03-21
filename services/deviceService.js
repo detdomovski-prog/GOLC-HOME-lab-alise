@@ -40,7 +40,7 @@ const devices = {
   temp1: {
     id: 'temp1',
     name: 'Датчик температуры',
-    type: 'devices.types.sensor',
+    type: 'devices.types.sensor.climate',
     status_info: { reportable: true },
     capabilities: [],
     properties: [
@@ -85,7 +85,13 @@ exports.queryDevices = function(ids) {
   }
   return ids.map(id => {
     const d = devices[id];
-    if (!d) return { id, capabilities: [], properties: [] };
+    if (!d) {
+      return {
+        id,
+        error_code: 'DEVICE_NOT_FOUND',
+        error_message: 'Device not found'
+      };
+    }
     // Build capabilities states
     const caps = d.capabilities.map(c => {
       if (c.type === 'devices.capabilities.on_off') {
