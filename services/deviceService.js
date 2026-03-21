@@ -52,6 +52,15 @@ const devices = {
           instance: 'temperature',
           unit: 'unit.temperature.celsius'
         }
+      },
+      {
+        type: 'devices.properties.float',
+        retrievable: true,
+        reportable: true,
+        parameters: {
+          instance: 'humidity',
+          unit: 'unit.percent'
+        }
       }
     ],
     device_info: {
@@ -61,7 +70,8 @@ const devices = {
       sw_version: '1.0'
     },
     state: {
-      temperature: 22.5
+      temperature: 22.5,
+      humidity: 48
     }
   }
 };
@@ -107,6 +117,15 @@ exports.queryDevices = function(ids) {
           state: {
             instance: 'temperature',
             value: Number(d.state.temperature)
+          }
+        };
+      }
+      if (p.type === 'devices.properties.float' && p.parameters && p.parameters.instance === 'humidity') {
+        return {
+          type: p.type,
+          state: {
+            instance: 'humidity',
+            value: Number(d.state.humidity)
           }
         };
       }
