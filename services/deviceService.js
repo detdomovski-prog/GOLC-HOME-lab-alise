@@ -60,13 +60,14 @@ exports.applyActions = function(body) {
     const id = dev.id;
     const d = devices[id];
     if (!d) {
-      results.push({ id, capabilities: [], action_result: { status: 'ERROR', error_code: 'DEVICE_NOT_FOUND' } });
+      results.push({ id, action_result: { status: 'ERROR', error_code: 'DEVICE_NOT_FOUND' } });
       continue;
     }
     const capsRes = [];
     const requestedCapabilities = dev.capabilities || dev.actions || [];
     if (Array.isArray(requestedCapabilities)) {
       for (const cap of requestedCapabilities) {
+        const instance = (cap.state && cap.state.instance) || 'on';
         if (cap.type === 'devices.capabilities.on_off') {
           let value = cap.state && cap.state.value;
           if (value === 'true') value = true;
@@ -74,21 +75,34 @@ exports.applyActions = function(body) {
 
           if (typeof value === 'boolean') {
             d.state.on = value;
-            capsRes.push({ type: cap.type, state: { instance: 'on', value: d.state.on }, action_result: { status: 'DONE' } });
+            capsRes.push({
+              type: cap.type,
+              state: {
+                instance,
+                action_result: { status: 'DONE' }
+              }
+            });
           } else {
             capsRes.push({
               type: cap.type,
-              state: { instance: 'on', value: d.state.on },
-              action_result: { status: 'ERROR', error_code: 'INVALID_VALUE' }
+              state: {
+                instance,
+                action_result: { status: 'ERROR', error_code: 'INVALID_VALUE' }
+              }
             });
           }
         } else {
-          capsRes.push({ type: cap.type, action_result: { status: 'ERROR', error_code: 'NOT_SUPPORTED_IN_CURRENT_MODE' } });
+          capsRes.push({
+            type: cap.type,
+            state: {
+              instance,
+              action_result: { status: 'ERROR', error_code: 'NOT_SUPPORTED_IN_CURRENT_MODE' }
+            }
+          });
         }
       }
     }
-    const hasErrors = capsRes.some(cap => cap.action_result && cap.action_result.status === 'ERROR');
-    results.push({ id: d.id, capabilities: capsRes, action_result: { status: hasErrors ? 'ERROR' : 'DONE' } });
+    results.push({ id: d.id, capabilities: capsRes });
   }
 
   return results;
