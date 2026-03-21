@@ -36,7 +36,13 @@ app.use((req, res, next) => {
 // Simple auth middleware: require Authorization: Bearer <AUTH_TOKEN> for protected endpoints
 app.use((req, res, next) => {
   // Allow token endpoint without Authorization
-  if (req.path === '/token' || req.path === '/ping') return next();
+  if (
+    req.path === '/token' ||
+    req.path === '/endpoint/token' ||
+    req.path === '/auth' ||
+    req.path === '/endpoint/auth' ||
+    req.path === '/ping'
+  ) return next();
 
   const auth = req.headers['authorization'];
   const expected = process.env.AUTH_TOKEN ? `Bearer ${process.env.AUTH_TOKEN}` : null;
