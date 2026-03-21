@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
+function getIssuedToken() {
+  return process.env.AUTH_TOKEN || 'alice-oauth-token-valid';
+}
+
 function handleAuthorize(req, res) {
   const redirectUri = req.query.redirect_uri;
   const state = req.query.state;
@@ -23,13 +27,23 @@ router.get('/endpoint/auth', handleAuthorize);
 
 router.post('/token', (req, res) => {
   // In a real implementation this would validate client credentials
-  const token = process.env.AUTH_TOKEN || 'alice-oauth-token-valid';
-  res.json({ access_token: token, token_type: 'bearer', expires_in: 3600 });
+  const token = getIssuedToken();
+  res.json({
+    access_token: token,
+    token_type: 'bearer',
+    expires_in: 31536000,
+    refresh_token: token,
+  });
 });
 
 router.post('/endpoint/token', (req, res) => {
-  const token = process.env.AUTH_TOKEN || 'alice-oauth-token-valid';
-  res.json({ access_token: token, token_type: 'bearer', expires_in: 3600 });
+  const token = getIssuedToken();
+  res.json({
+    access_token: token,
+    token_type: 'bearer',
+    expires_in: 31536000,
+    refresh_token: token,
+  });
 });
 
 module.exports = router;

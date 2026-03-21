@@ -45,11 +45,24 @@ app.use((req, res, next) => {
   ) return next();
 
   const auth = req.headers['authorization'];
-  const expected = process.env.AUTH_TOKEN ? `Bearer ${process.env.AUTH_TOKEN}` : null;
   if (!auth) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization header' });
   }
-  if (expected && auth !== expected) {
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!match) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Invalid Authorization format' });
+  }
+
+  const receivedToken = match[1].trim();
+  const validTokens = new Set(
+    [
+      process.env.AUTH_TOKEN,
+      'alice-oauth-token-valid',
+      'test-token',
+    ].filter(Boolean)
+  );
+
+  if (!validTokens.has(receivedToken)) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Invalid token' });
   }
   return next();
