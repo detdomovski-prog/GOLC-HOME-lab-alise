@@ -18,6 +18,51 @@ const devices = {
     state: {
       on: true
     }
+  },
+  socket1: {
+    id: 'socket1',
+    name: 'Розетка',
+    type: 'devices.types.socket',
+    status_info: { reportable: true },
+    capabilities: [
+      { type: 'devices.capabilities.on_off', retrievable: true }
+    ],
+    device_info: {
+      manufacturer: 'DIY',
+      model: 'socket1',
+      hw_version: '1.0',
+      sw_version: '1.0'
+    },
+    state: {
+      on: false
+    }
+  },
+  temp1: {
+    id: 'temp1',
+    name: 'Датчик температуры',
+    type: 'devices.types.sensor',
+    status_info: { reportable: true },
+    capabilities: [],
+    properties: [
+      {
+        type: 'devices.properties.float',
+        retrievable: true,
+        reportable: true,
+        parameters: {
+          instance: 'temperature',
+          unit: 'unit.temperature.celsius'
+        }
+      }
+    ],
+    device_info: {
+      manufacturer: 'DIY',
+      model: 'temp1',
+      hw_version: '1.0',
+      sw_version: '1.0'
+    },
+    state: {
+      temperature: 22.5
+    }
   }
 };
 
@@ -28,6 +73,7 @@ exports.getDevicesList = function() {
     type: d.type,
     status_info: d.status_info,
     capabilities: d.capabilities,
+    properties: d.properties || [],
     device_info: d.device_info
   }));
 };
@@ -39,7 +85,7 @@ exports.queryDevices = function(ids) {
   }
   return ids.map(id => {
     const d = devices[id];
-    if (!d) return { id, capabilities: [] };
+    if (!d) return { id, capabilities: [], properties: [] };
     // Build capabilities states
     const caps = d.capabilities.map(c => {
       if (c.type === 'devices.capabilities.on_off') {
@@ -47,7 +93,21 @@ exports.queryDevices = function(ids) {
       }
       return { type: c.type };
     });
-    return { id: d.id, capabilities: caps };
+
+    const props = (d.properties || []).map(p => {
+      if (p.type === 'devices.properties.float' && p.parameters && p.parameters.instance === 'temperature') {
+        return {
+          type: p.type,
+          state: {
+            instance: 'temperature',
+            value: Number(d.state.temperature)
+          }
+        };
+      }
+      return { type: p.type };
+    });
+
+    return { id: d.id, capabilities: caps, properties: props };
   });
 };
 
@@ -69,6 +129,18 @@ exports.applyActions = function(body) {
       for (const cap of requestedCapabilities) {
         const instance = (cap.state && cap.state.instance) || 'on';
         if (cap.type === 'devices.capabilities.on_off') {
+          const supportsOnOff = (d.capabilities || []).some(c => c.type === 'devices.capabilities.on_off');
+          if (!supportsOnOff) {
+            capsRes.push({
+              type: cap.type,
+              state: {
+                instance,
+                action_result: { status: 'ERROR', error_code: 'NOT_SUPPORTED_IN_CURRENT_MODE' }
+              }
+            });
+            continue;
+          }
+
           let value = cap.state && cap.state.value;
           if (value === 'true') value = true;
           if (value === 'false') value = false;
