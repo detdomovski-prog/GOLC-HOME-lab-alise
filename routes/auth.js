@@ -23,12 +23,12 @@ router.get('/endpoint/auth', handleAuthorize);
 
 router.post('/token', (req, res) => {
   // In a real implementation this would validate client credentials
-  const token = process.env.AUTH_TOKEN || 'test-token';
+  const token = process.env.AUTH_TOKEN || 'alice-oauth-token-valid';
   res.json({ access_token: token, token_type: 'bearer', expires_in: 3600 });
 });
 
 router.post('/endpoint/token', (req, res) => {
-  const token = process.env.AUTH_TOKEN || 'test-token';
+  const token = process.env.AUTH_TOKEN || 'alice-oauth-token-valid';
   res.json({ access_token: token, token_type: 'bearer', expires_in: 3600 });
 });
 
