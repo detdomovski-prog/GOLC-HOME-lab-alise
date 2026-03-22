@@ -1,0 +1,114 @@
+// Node-RED Example Flow
+// Управление устройствами через OAuth Backend
+
+// Этот пример показывает как использовать golc-auth-simple для авторизации
+// и потом отправлять команды устройствам через Node-RED API
+
+[
+  {
+    "id": "auth_node",
+    "type": "golc-auth-simple",
+    "name": "Авторизация",
+    "backendUrl": "http://localhost:3000",
+    "username": "admin",
+    "z": "example_flow",
+    "x": 100,
+    "y": 100,
+    "wires": [["get_devices"]]
+  },
+  {
+    "id": "get_devices",
+    "type": "http request",
+    "name": "Получить устройства",
+    "method": "GET",
+    "url": "http://localhost:1881/api/devices?user_id=user123",
+    "headers": {
+      "X-Token": "your-secret-token"
+    },
+    "z": "example_flow",
+    "x": 300,
+    "y": 100,
+    "wires": [["output"]]
+  },
+  {
+    "id": "control_lamp",
+    "type": "http request",
+    "name": "Управление лампой",
+    "method": "POST",
+    "url": "http://localhost:1881/api/devices/action",
+    "headers": {
+      "X-Token": "your-secret-token",
+      "Content-Type": "application/json"
+    },
+    "z": "example_flow",
+    "x": 300,
+    "y": 200,
+    "wires": [["output"]],
+    "payload": "{\"devices\":[{\"id\":\"lamp_1\",\"capabilities\":[{\"type\":\"on_off\",\"state\":{\"value\":true}}]}]}"
+  },
+  {
+    "id": "output",
+    "type": "debug",
+    "name": "Результат",
+    "z": "example_flow",
+    "x": 500,
+    "y": 150
+  }
+]
+
+/*
+
+ИНСТРУКЦИЯ ПО ИСПОЛЬЗОВАНИЮ:
+
+1. Импортируешь этот flow в Node-RED:
+   - Node-RED UI → Menu → Import → вставляешь JSON выше
+
+2. Конфигурируешь ноду "Авторизация" (golc-auth-simple):
+   - Backend URL: http://localhost:3000 (или твой домен)
+   - Username: admin (или другой пользователь)
+   - Password: admin123 (или пароль)
+   - Нажимаешь "Login"
+
+3. Обновляешь заголовки в HTTP request нодах:
+   - X-Token: твой NODERED_TOKEN из .env
+
+4. Тестируешь:
+   - Отправляешь сообщение в первую ноду
+   - Смотришь результат в debug panel
+
+ПРИМЕРЫ КОМАНД:
+
+Включить лампу:
+{
+  "devices": [{
+    "id": "lamp_1",
+    "capabilities": [{
+      "type": "on_off",
+      "state": {"value": true}
+    }]
+  }]
+}
+
+Изменить цвет:
+{
+  "devices": [{
+    "id": "lamp_1",
+    "capabilities": [{
+      "type": "color_setting",
+      "state": {"value": "FF0000"}
+    }]
+  }]
+}
+
+Регулировка яркости:
+{
+  "devices": [{
+    "id": "lamp_1",
+    "capabilities": [{
+      "type": "brightness",
+      "state": {"value": 50}
+    }]
+  }]
+}
+
+*/
