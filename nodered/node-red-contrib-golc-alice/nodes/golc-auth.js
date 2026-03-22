@@ -166,7 +166,11 @@ async function fetchYandexUserInfo(accessToken) {
 }
 
 module.exports = function (RED) {
-  RED.httpAdmin.post('/golchomelab/auth/device/start', RED.auth.needsPermission(''), async (req, res) => {
+  const adminWritePermission = (RED.auth && RED.auth.needsPermission)
+    ? RED.auth.needsPermission('flows.write')
+    : function (_req, _res, next) { next(); };
+
+  RED.httpAdmin.post('/golchomelab/auth/device/start', adminWritePermission, async (req, res) => {
     try {
       cleanupFlows();
 
@@ -206,7 +210,7 @@ module.exports = function (RED) {
     }
   });
 
-  RED.httpAdmin.post('/golchomelab/auth/device/finish', RED.auth.needsPermission(''), async (req, res) => {
+  RED.httpAdmin.post('/golchomelab/auth/device/finish', adminWritePermission, async (req, res) => {
     try {
       const flowId = String((req.body && req.body.flowId) || '').trim();
       if (!flowId || !deviceFlows.has(flowId)) {

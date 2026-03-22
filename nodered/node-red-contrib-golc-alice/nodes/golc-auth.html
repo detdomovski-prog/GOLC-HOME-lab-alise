@@ -75,7 +75,11 @@
             RED.notify('Код получен. Подтверди доступ в Яндексе и нажми Submit.', { type: 'success' });
           })
           .fail(function (xhr) {
-            const err = xhr && xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ошибка старта авторизации';
+            const err = (
+              (xhr && xhr.responseJSON && xhr.responseJSON.error) ||
+              (xhr && xhr.responseText) ||
+              `Ошибка старта авторизации (HTTP ${xhr && xhr.status ? xhr.status : 'unknown'})`
+            );
             notifyError(err);
           })
           .always(function () {
@@ -116,7 +120,11 @@
             RED.notify('Авторизация успешна. ID сохранён локально.', { type: 'success' });
           })
           .fail(function (xhr) {
-            const err = xhr && xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ошибка submit';
+            const err = (
+              (xhr && xhr.responseJSON && xhr.responseJSON.error) ||
+              (xhr && xhr.responseText) ||
+              `Ошибка submit (HTTP ${xhr && xhr.status ? xhr.status : 'unknown'})`
+            );
             notifyError(err);
           })
           .always(function () {
@@ -138,6 +146,9 @@
   <div class="form-row">
     <label for="node-input-clientId">Client ID</label>
     <input type="text" id="node-input-clientId" placeholder="golc.daniar2017" />
+  </div>
+  <div class="form-tips" style="margin-top:-8px; margin-bottom:10px;">
+    Укажи именно OAuth <code>client_id</code> приложения Яндекса (не email и не логин аккаунта).
   </div>
 
   <div class="form-row">
