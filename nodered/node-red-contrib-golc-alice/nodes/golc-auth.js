@@ -170,6 +170,7 @@ module.exports = function (RED) {
     ? RED.auth.needsPermission('flows.write')
     : function (_req, _res, next) { next(); };
 
+  // Routes регистрируются через RED.httpAdmin, который автоматически под правильным путём
   RED.httpAdmin.post('/golchomelab/auth/device/start', adminWritePermission, async (req, res) => {
     try {
       cleanupFlows();

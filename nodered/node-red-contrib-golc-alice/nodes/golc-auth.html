@@ -27,8 +27,11 @@
       let activeFlowId = '';
 
       function adminUrl(path) {
-        const root = (RED.settings.httpAdminRoot || '').replace(/\/$/, '');
-        return `${root}${path}`;
+        // Node-RED admin endpoints находятся по пути: httpAdminRoot + path
+        // Если httpAdminRoot не установлен, используем дефолтное значение '/'
+        const root = (RED.settings && RED.settings.httpAdminRoot) || '/';
+        const cleanRoot = String(root).replace(/\/$/, '') || '';
+        return `${cleanRoot}${path}`;
       }
 
       function setBusy(busy) {
