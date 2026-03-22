@@ -3,66 +3,21 @@
     category: 'config',
     defaults: {
       name: { value: null },
-      apiBaseUrl: { value: 'http://127.0.0.1:3001', required: true }
+      apiBaseUrl: { value: 'https://alice.golchomelab.kz', required: true }
     },
     credentials: {
-      email: { type: 'text' },
+      email: { type: 'text', required: true },
       password: { type: 'password', required: true },
-      token: { type: 'password' },
+      token: { type: 'password', required: true },
       id: { type: 'text', required: true }
     },
     label: function () {
       return this.name || this.id || 'alice-service';
     },
     oneditprepare: function () {
-      const currentId = $('#node-config-input-id').val();
-      if (currentId) {
-        $('#alice-auth-result').text(`✓ ${currentId}`);
-      }
-
       if (!$('#node-config-input-apiBaseUrl').val()) {
-        $('#node-config-input-apiBaseUrl').val('http://127.0.0.1:3001');
+        $('#node-config-input-apiBaseUrl').val('https://alice.golchomelab.kz');
       }
-
-      $('#alice-auth-btn-login').on('click', async function (event) {
-        event.preventDefault();
-
-        const apiBaseUrl = ($('#node-config-input-apiBaseUrl').val() || 'http://127.0.0.1:3001').trim().replace(/\/$/, '');
-        const login = ($('#node-config-input-id').val() || '').trim();
-        const password = ($('#node-config-input-password').val() || '').trim();
-
-        if (!login || !password) {
-          RED.notify('Укажи логин и пароль', { type: 'error' });
-          return;
-        }
-
-        try {
-          const response = await fetch(`${apiBaseUrl}/api/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: login, password })
-          });
-
-          let data = {};
-          try {
-            data = await response.json();
-          } catch (_err) {
-            data = {};
-          }
-
-          if (!response.ok || !data.ok || !data.access_token) {
-            RED.notify(`Ошибка авторизации: ${(data && data.error) || response.statusText || 'auth failed'}`, { type: 'error' });
-            return;
-          }
-
-          $('#node-config-input-token').val(data.access_token).trigger('change');
-          $('#node-config-input-email').val(data.email || '').trigger('change');
-          $('#alice-auth-result').text(`✓ ${data.user_id || login}`);
-          RED.notify('✅ Авторизация успешна', { type: 'success' });
-        } catch (error) {
-          RED.notify(`Ошибка запроса: ${error.message}`, { type: 'error' });
-        }
-      });
     },
     oneditsave: function () {
       const nodeName = $('#node-config-input-id').val();
@@ -93,46 +48,42 @@
 <script type="text/x-red" data-template-name="alice-service">
   <input type="hidden" id="node-config-input-name">
 
-  <div class="form-row"><b>Backend Authentication</b></div>
+  <div class="form-row"><b>Local credentials (stored in Node-RED)</b></div>
 
   <div class="form-row">
-    <label for="node-config-input-id">Login</label>
-    <input type="text" id="node-config-input-id" placeholder="admin" />
+    <label for="node-config-input-email">Email</label>
+    <input type="text" id="node-config-input-email" placeholder="user@example.com" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-id">Login (Yandex ID)</label>
+    <input type="text" id="node-config-input-id" placeholder="your-yandex-id" />
   </div>
 
   <div class="form-row">
     <label for="node-config-input-password">Password</label>
-    <input type="password" id="node-config-input-password" placeholder="password" />
+    <input type="password" id="node-config-input-password" placeholder="your-yandex-password" />
   </div>
 
   <div class="form-row">
-    <button id="alice-auth-btn-login" class="ui-button">Login</button>
+    <label for="node-config-input-token">OAuth token</label>
+    <input type="password" id="node-config-input-token" placeholder='{"access_token":"..."} или токен строкой' />
   </div>
 
-  <div class="form-row">
-    <p><b>Authentication result:</b> <span id="alice-auth-result">нет авторизации</span></p>
+  <div class="form-tips" style="margin-bottom: 12px;">
+    Пароль и токен не отправляются в backend авторизации, используются локально в Node-RED для MQTT подключения.
   </div>
 
   <details style="margin: 8px 0 12px 0;">
     <summary style="cursor:pointer;">Дополнительно (API URL)</summary>
     <div class="form-row" style="margin-top:8px;">
       <label for="node-config-input-apiBaseUrl">API Base URL</label>
-      <input type="text" id="node-config-input-apiBaseUrl" placeholder="http://127.0.0.1:3001" />
+      <input type="text" id="node-config-input-apiBaseUrl" placeholder="https://alice.golchomelab.kz" />
     </div>
     <div class="form-tips" id="node-tip">
-      Оставь по умолчанию, если backend работает локально на этом адресе.
+      Используется для синхронизации конфигов/состояния устройств через gateway API.
     </div>
   </details>
-
-  <div class="form-row" style="display:none;">
-    <label for="node-config-input-email">Email</label>
-    <input type="text" id="node-config-input-email" />
-  </div>
-
-  <div class="form-row" style="display:none;">
-    <label for="node-config-input-token">Token</label>
-    <input type="password" id="node-config-input-token" />
-  </div>
 
   <hr>
 
