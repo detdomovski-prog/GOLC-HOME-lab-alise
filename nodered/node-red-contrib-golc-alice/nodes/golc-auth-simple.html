@@ -4,7 +4,7 @@
     color: '#ffd86b',
     defaults: {
       name: { value: '' },
-      backendUrl: { value: 'http://127.0.0.1:3001' },
+      backendUrl: { value: 'https://alice.golchomelab.kz' },
       username: { value: '', required: true }
     },
     credentials: {
@@ -21,7 +21,7 @@
     },
     oneditprepare: function () {
       if (!$('#node-input-backendUrl').val()) {
-        $('#node-input-backendUrl').val('http://127.0.0.1:3001');
+        $('#node-input-backendUrl').val('https://alice.golchomelab.kz');
       }
 
       $('#golc-auth-simple-btn-login').on('click', async function (event) {
@@ -29,7 +29,7 @@
 
         const username = ($('#node-input-username').val() || '').trim();
         const password = ($('#node-input-password').val() || '').trim();
-        const backendUrl = (($('#node-input-backendUrl').val() || 'http://127.0.0.1:3001').trim()).replace(/\/$/, '');
+        const backendUrl = (($('#node-input-backendUrl').val() || 'https://alice.golchomelab.kz').trim()).replace(/\/$/, '');
 
         if (!username || !password) {
           RED.notify('Укажи логин и пароль', { type: 'error' });
@@ -102,7 +102,7 @@
     <summary style="cursor:pointer;">Дополнительно (Backend URL)</summary>
     <div class="form-row" style="margin-top:8px;">
       <label for="node-input-backendUrl">Backend URL</label>
-      <input type="text" id="node-input-backendUrl" placeholder="http://127.0.0.1:3001" />
+      <input type="text" id="node-input-backendUrl" placeholder="https://alice.golchomelab.kz" />
     </div>
     <div class="form-tips" style="margin-top:-8px;">
       Меняй только если backend запущен не на этом адресе.

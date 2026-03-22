@@ -12,6 +12,16 @@ const { v4: uuid } = require('uuid');
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 
 // ========================================
 // КОНФИГУРАЦИЯ
@@ -23,7 +33,7 @@ const CONFIG = {
   YANDEX_CLIENT_SECRET: process.env.YANDEX_CLIENT_SECRET || 'your-client-secret-from-yandex',
   
   // Твой backend
-  BACKEND_URL: process.env.BACKEND_URL || 'https://your-domain.kz',
+  BACKEND_URL: process.env.BACKEND_URL || 'https://alice.golchomelab.kz',
   
   // Node-RED
   NODERED_URL: process.env.NODERED_URL || 'http://localhost:1880',
