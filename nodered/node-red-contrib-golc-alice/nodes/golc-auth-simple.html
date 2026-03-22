@@ -1,0 +1,195 @@
+<script type="text/javascript">
+  RED.nodes.registerType('golc-auth-simple', {
+    category: 'GOLC Alice',
+    color: '#FFA500',
+    defaults: {
+      name: { value: 'Авторизация Алиса' },
+      backendUrl: { value: 'http://localhost:3000', required: true },
+      authEndpoint: { value: '/alice/auth' },
+      alwaysSuccess: { value: false }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'golc.png',
+    label: function () {
+      return this.name || 'golc-auth-simple';
+    },
+    oneditprepare: function () {
+      // При открытии диалога
+      if (!$('#node-input-backendUrl').val()) {
+        $('#node-input-backendUrl').val('http://localhost:3000');
+      }
+      if (!$('#node-input-authEndpoint').val()) {
+        $('#node-input-authEndpoint').val('/alice/auth');
+      }
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="golc-auth-simple">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Название ноды</label>
+    <input type="text" id="node-input-name" placeholder="Авторизация Алиса" />
+  </div>
+
+  <div class="form-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+    <label for="node-input-backendUrl">URL бэкенда</label>
+    <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-authEndpoint">Endpoint аутентификации</label>
+    <input type="text" id="node-input-authEndpoint" placeholder="/alice/auth" />
+  </div>
+
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-alwaysSuccess" style="display: inline-block; width: 20px; margin-right: 10px;">
+    <label for="node-input-alwaysSuccess" style="width: auto;">Авто-ответ при таймауте (при недоступности бэкенда)</label>
+  </div>
+
+  <div class="form-tips" style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-left: 4px solid #FFA500;">
+    <p><strong>📋 Как использовать:</strong></p>
+    <ol style="margin: 10px 0; padding-left: 20px;">
+      <li>Отправьте в ноду объект: <code style="background: #fff; padding: 2px 5px;">{login: "user@yandex.ru", password: "pass123"}</code></li>
+      <li>Нода отправит запрос к бэкенду на аутентификацию</li>
+      <li>При успехе выведет <code>msg.token</code>, <code>msg.user_id</code>, <code>msg.account_email</code></li>
+    </ol>
+
+    <p><strong>🔑 Входящий msg.payload:</strong></p>
+    <ul style="margin: 5px 0; padding-left: 20px;">
+      <li><code>login</code> — логин Яндекс (email или yandex ID)</li>
+      <li><code>password</code> — пароль аккаунта</li>
+    </ul>
+
+    <p><strong>✓ Выходящий msg:</strong></p>
+    <ul style="margin: 5px 0; padding-left: 20px;">
+      <li><code>msg.token</code> — авторизационный токен</li>
+      <li><code>msg.user_id</code> — ID пользователя Яндекса</li>
+      <li><code>msg.account_email</code> — email аккаунта</li>
+      <li><code>msg.statusCode</code> — HTTP статус (200 = успех, 401 = неверный пароль)</li>
+      <li><code>msg.authResult</code> — полный ответ от бэкенда</li>
+    </ul>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="golc-auth-simple">
+  <p><strong>Упрощённая аутентификация Яндекс.ID для Алисы</strong></p>
+  
+  <p>Эта нода аутентифицирует пользователя Яндекса (логин + пароль) и возвращает авторизационный токен для работы с Алисой.</p>
+
+  <h3>Назначение</h3>
+  <p>Используется для добавления аккаунта Яндекс в Node-RED для интеграции с Алисой и управлением умными устройствами.</p>
+
+  <h3>Параметры конфигурации</h3>
+  <dl class="message-properties">
+    <dt>URL бэкенда
+      <span class="property-type">string</span>
+    </dt>
+    <dd>Адрес бэкенд-сервера GOLC (например, http://localhost:3000 или https://api.example.com)</dd>
+    <dt>Endpoint аутентификации
+      <span class="property-type">string</span>
+    </dt>
+    <dd>Путь на бэкенде для аутентификации (по умолчанию /alice/auth)</dd>
+    <dt>Авто-ответ при таймауте
+      <span class="property-type">boolean</span>
+    </dt>
+    <dd>Если бэкенд не отвечает >3 сек, отправить успешный ответ Алисе (для fallback режима)</dd>
+  </dl>
+
+  <h3>Входные сообщения</h3>
+  <p><code>msg.payload</code> должно содержать:</p>
+  <pre>{
+  "login": "user@yandex.ru",        // или yandex.ru ID
+  "password": "yourPassword123"      // пароль аккаунта
+}</pre>
+
+  <h3>Выходные сообщения</h3>
+  <dl class="message-properties">
+    <dt>msg.token
+      <span class="property-type">string</span>
+    </dt>
+    <dd>Авторизационный токен для работы с Алисой</dd>
+    <dt>msg.user_id
+      <span class="property-type">string</span>
+    </dt>
+    <dd>Уникальный ID пользователя в системе Яндекса</dd>
+    <dt>msg.account_email
+      <span class="property-type">string</span>
+    </dt>
+    <dd>Email адрес авторизованного аккаунта</dd>
+    <dt>msg.statusCode
+      <span class="property-type">number</span>
+    </dt>
+    <dd>HTTP статус: 200 = успех, 401 = неверный пароль, другое = ошибка</dd>
+    <dt>msg.authResult
+      <span class="property-type">object</span>
+    </dt>
+    <dd>Полный JSON ответ от бэкенда</dd>
+  </dl>
+
+  <h3>Коды ошибок</h3>
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <th style="text-align: left; border-bottom: 1px solid #ccc; padding: 8px;">Статус</th>
+      <th style="text-align: left; border-bottom: 1px solid #ccc; padding: 8px;">Значение</th>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">200</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">✓ Успешная аутентификация</td>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">401</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">✗ Неверный логин или пароль</td>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">500+</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">✗ Ошибка на сервере</td>
+    </tr>
+  </table>
+
+  <h3>Примеры использования</h3>
+
+  <h4>Пример 1: Простая аутентификация</h4>
+  <pre>
+// Inject node с:
+{
+  "login": "user@yandex.ru",
+  "password": "secretPassword"
+}
+
+// Выход из golc-auth-simple:
+{
+  "login": "user@yandex.ru",
+  "password": "secretPassword",
+  "token": "eJydUsFuwjAM/BXLZ0gscSaEhDTtMkmb1Al4qHMqFi4Ey...",
+  "user_id": "123456789",
+  "account_email": "user@yandex.ru",
+  "statusCode": 200,
+  "authResult": {...}
+}
+  </pre>
+
+  <h4>Пример 2: Сохранение токена для последующей работы</h4>
+  <p>После успешной аутентификации можно сохранить <code>msg.token</code> в переменную контекста:</p>
+  <pre>
+// В Function node:
+context.global.aliceToken = msg.token;
+context.global.aliceUserId = msg.user_id;
+
+// Используйте позже для запросов к API Алисы
+  </pre>
+
+  <h3>Интеграция с бэкенд-ом</h3>
+  <p>Бэкенд должен предоставить endpoint <code>POST /alice/auth</code> который:</p>
+  <ul>
+    <li>Принимает JSON: <code>{"login": "...", "password": "..."}</code></li>
+    <li>Возвращает JSON: <code>{"access_token": "...", "user_id": "...", "account_email": "..."}</code></li>
+  </ul>
+
+  <h3>Документация</h3>
+  <ul>
+    <li><a href="https://yandex.ru/dev/id/">Яндекс.ID — документация</a></li>
+    <li><a href="https://github.com/detdomovski-prog/GOLC-HOME-lab-alise">GOLC HOME на GitHub</a></li>
+  </ul>
+</script>
