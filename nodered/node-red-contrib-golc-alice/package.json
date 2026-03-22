@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-golc-alice",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "бета тестирование",
   "main": "nodes/golc-device.js",
   "keywords": [
@@ -32,7 +32,8 @@
       "on-off-golc": "nodes/on-off-golc.js",
       "range-golc": "nodes/range-golc.js",
       "toggle-golc": "nodes/toggle-golc.js",
-      "mode-golc": "nodes/mode-golc.js"
+      "mode-golc": "nodes/mode-golc.js",
+      "sensor-golc": "nodes/sensor-golc.js"
     }
   }
 }
