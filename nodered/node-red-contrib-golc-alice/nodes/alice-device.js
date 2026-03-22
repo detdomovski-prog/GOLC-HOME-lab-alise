@@ -1,6 +1,19 @@
 const http = require('http');
 const https = require('https');
 
+function asBoolean(value, fallback) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  return fallback;
+}
+
 function requestJson(method, targetUrl, headers, body) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(targetUrl);
@@ -55,17 +68,23 @@ module.exports = function (RED) {
 
     node.deviceId = config.deviceId || '';
     node.deviceName = config.deviceName || '';
+    node.devicePreset = config.devicePreset || 'light';
     node.deviceType = config.deviceType || 'devices.types.light';
 
-    node.withOnOff = !!config.withOnOff;
-    node.withTemperature = !!config.withTemperature;
-    node.withHumidity = !!config.withHumidity;
-    node.withOpenSensor = !!config.withOpenSensor;
+    node.withOnOff = asBoolean(config.withOnOff, true);
+    node.withTemperature = asBoolean(config.withTemperature, false);
+    node.withHumidity = asBoolean(config.withHumidity, false);
+    node.withOpenSensor = asBoolean(config.withOpenSensor, false);
 
     async function handleRegister(msg) {
+      const deviceId = (msg.deviceId || node.deviceId || '').trim();
+      if (!deviceId) {
+        throw new Error('deviceId is required for register mode');
+      }
+
       const baseDevice = {
-        id: node.deviceId,
-        name: node.deviceName || node.deviceId,
+        id: deviceId,
+        name: (msg.deviceName || node.deviceName || deviceId).trim(),
         type: node.deviceType,
         status_info: { reportable: true },
         capabilities: [],
@@ -112,6 +131,8 @@ module.exports = function (RED) {
       const merged = {
         ...baseDevice,
         ...deviceFromMsg,
+        id: deviceFromMsg.id || baseDevice.id,
+        name: deviceFromMsg.name || baseDevice.name,
         state: {
           ...baseDevice.state,
           ...(deviceFromMsg.state || {}),
@@ -175,5 +196,5 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType('alice-device', AliceDeviceNode);
+  RED.nodes.registerType('golchomelab-virtual-device', AliceDeviceNode);
 };

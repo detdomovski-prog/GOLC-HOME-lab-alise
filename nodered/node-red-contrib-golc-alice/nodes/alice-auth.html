@@ -1,0 +1,121 @@
+<script type="text/javascript">
+  RED.nodes.registerType('golchomelab-auth', {
+    category: 'function',
+    color: '#ffd86b',
+    defaults: {
+      name: { value: '' },
+      backendUrl: { value: 'http://localhost:3000', required: true },
+      action: { value: 'get_token', required: true },
+      authEndpoint: { value: '/endpoint/auth' },
+      tokenEndpoint: { value: '/endpoint/token' },
+      clientId: { value: '' },
+      redirectUri: { value: '' },
+      scope: { value: '' },
+      code: { value: '' },
+      state: { value: '' },
+      grantType: { value: 'authorization_code' },
+      includeAuthHeader: { value: true }
+    },
+    credentials: {
+      clientSecret: { type: 'password' }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'font-awesome/fa-key',
+    paletteLabel: 'golc-auth',
+    label: function () {
+      return this.name || 'golc-auth';
+    },
+    oneditprepare: function () {
+      function syncRows() {
+        const isBuildUrl = $('#node-input-action').val() === 'build_auth_url';
+        $('.golc-auth-token-only').toggle(!isBuildUrl);
+        $('.golc-auth-url-only').toggle(isBuildUrl);
+      }
+
+      $('#node-input-action').on('change', syncRows);
+      syncRows();
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="golchomelab-auth">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="golc-auth" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-backendUrl">Backend URL</label>
+    <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-action">Action</label>
+    <select id="node-input-action">
+      <option value="get_token">Get token</option>
+      <option value="build_auth_url">Build auth URL</option>
+    </select>
+  </div>
+
+  <div class="form-row golc-auth-url-only">
+    <label for="node-input-authEndpoint">Auth endpoint</label>
+    <input type="text" id="node-input-authEndpoint" placeholder="/endpoint/auth" />
+  </div>
+
+  <div class="form-row golc-auth-token-only">
+    <label for="node-input-tokenEndpoint">Token endpoint</label>
+    <input type="text" id="node-input-tokenEndpoint" placeholder="/endpoint/token" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-clientId">Client ID</label>
+    <input type="text" id="node-input-clientId" placeholder="your-client-id" />
+  </div>
+
+  <div class="form-row golc-auth-token-only">
+    <label for="node-input-clientSecret">Client Secret</label>
+    <input type="password" id="node-input-clientSecret" placeholder="your-client-secret" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-redirectUri">Redirect URI</label>
+    <input type="text" id="node-input-redirectUri" placeholder="https://social.yandex.net/broker/redirect" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-scope">Scope</label>
+    <input type="text" id="node-input-scope" placeholder="" />
+  </div>
+
+  <div class="form-row golc-auth-token-only">
+    <label for="node-input-grantType">Grant Type</label>
+    <input type="text" id="node-input-grantType" placeholder="authorization_code" />
+  </div>
+
+  <div class="form-row golc-auth-token-only">
+    <label for="node-input-code">Auth Code</label>
+    <input type="text" id="node-input-code" placeholder="test-code" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-state">State</label>
+    <input type="text" id="node-input-state" placeholder="optional-state" />
+  </div>
+
+  <div class="form-row golc-auth-token-only">
+    <label for="node-input-includeAuthHeader">Set Authorization</label>
+    <input type="checkbox" id="node-input-includeAuthHeader" style="width:auto;" />
+  </div>
+
+  <div class="form-tips">
+    <b>Get token:</b> sends POST to token endpoint and sets <code>msg.oauth</code>, <code>msg.access_token</code>, and optionally <code>msg.headers.Authorization</code>.<br/>
+    <b>Build auth URL:</b> creates <code>msg.authUrl</code> for redirect-based authorization flow.
+  </div>
+</script>
+
+<script type="text/html" data-help-name="golchomelab-auth">
+  <p>Authorization helper node for GOLC Alice backend OAuth flow.</p>
+  <p><b>Get token</b> action requests token and outputs OAuth payload.</p>
+  <p><b>Build auth URL</b> action builds URL for opening auth page and receiving code.</p>
+</script>

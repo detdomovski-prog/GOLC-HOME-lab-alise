@@ -1,5 +1,5 @@
 <script type="text/javascript">
-  RED.nodes.registerType('alice-device', {
+  RED.nodes.registerType('golchomelab-virtual-device', {
     category: 'function',
     color: '#6ab7ff',
     defaults: {
@@ -7,8 +7,9 @@
       backendUrl: { value: 'http://localhost:3000', required: true },
       internalToken: { value: 'local-internal-token', required: true },
       mode: { value: 'register', required: true },
-      deviceId: { value: '' },
+      deviceId: { value: '', required: true },
       deviceName: { value: '' },
+      devicePreset: { value: 'light' },
       deviceType: { value: 'devices.types.light' },
       withOnOff: { value: true },
       withTemperature: { value: false },
@@ -18,16 +19,112 @@
     inputs: 1,
     outputs: 1,
     icon: 'bridge.svg',
+    paletteLabel: 'golc-virtual-device',
     label: function () {
-      return this.name || 'alice-device';
+      return this.name || 'golc-virtual-device';
+    },
+    oneditprepare: function () {
+      const presets = {
+        light: {
+          type: 'devices.types.light',
+          withOnOff: true,
+          withTemperature: false,
+          withHumidity: false,
+          withOpenSensor: false
+        },
+        socket: {
+          type: 'devices.types.socket',
+          withOnOff: true,
+          withTemperature: false,
+          withHumidity: false,
+          withOpenSensor: false
+        },
+        switch: {
+          type: 'devices.types.switch',
+          withOnOff: true,
+          withTemperature: false,
+          withHumidity: false,
+          withOpenSensor: false
+        },
+        temperature: {
+          type: 'devices.types.sensor',
+          withOnOff: false,
+          withTemperature: true,
+          withHumidity: false,
+          withOpenSensor: false
+        },
+        climate: {
+          type: 'devices.types.sensor',
+          withOnOff: false,
+          withTemperature: true,
+          withHumidity: true,
+          withOpenSensor: false
+        },
+        contact: {
+          type: 'devices.types.openable',
+          withOnOff: false,
+          withTemperature: false,
+          withHumidity: false,
+          withOpenSensor: true
+        }
+      };
+
+      function syncMode() {
+        const isRegister = $('#node-input-mode').val() === 'register';
+        $('.alice-register-only').toggle(isRegister);
+      }
+
+      function syncPreset(applyPresetValues) {
+        const presetName = $('#node-input-devicePreset').val();
+        const preset = presets[presetName];
+        const isCustom = presetName === 'custom' || !preset;
+
+        $('#alice-device-type-row').toggle(isCustom);
+
+        if (preset && applyPresetValues) {
+          $('#node-input-deviceType').val(preset.type);
+          $('#node-input-withOnOff').prop('checked', preset.withOnOff);
+          $('#node-input-withTemperature').prop('checked', preset.withTemperature);
+          $('#node-input-withHumidity').prop('checked', preset.withHumidity);
+          $('#node-input-withOpenSensor').prop('checked', preset.withOpenSensor);
+        }
+      }
+
+      const currentType = $('#node-input-deviceType').val();
+      const currentPreset = this.devicePreset || 'light';
+      if (currentPreset !== 'custom' && presets[currentPreset] && presets[currentPreset].type !== currentType) {
+        $('#node-input-devicePreset').val('custom');
+      }
+
+      $('#node-input-mode').on('change', syncMode);
+      $('#node-input-devicePreset').on('change', function () {
+        syncPreset(true);
+      });
+
+      syncMode();
+      syncPreset(false);
+    },
+    oneditsave: function () {
+      const presets = {
+        light: 'devices.types.light',
+        socket: 'devices.types.socket',
+        switch: 'devices.types.switch',
+        temperature: 'devices.types.sensor',
+        climate: 'devices.types.sensor',
+        contact: 'devices.types.openable'
+      };
+      const presetName = $('#node-input-devicePreset').val();
+      if (presetName !== 'custom' && presets[presetName]) {
+        $('#node-input-deviceType').val(presets[presetName]);
+      }
     }
   });
 </script>
 
-<script type="text/html" data-template-name="alice-device">
+<script type="text/html" data-template-name="golchomelab-virtual-device">
   <div class="form-row">
     <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-    <input type="text" id="node-input-name" placeholder="alice-device" />
+    <input type="text" id="node-input-name" placeholder="golc-virtual-device" />
   </div>
   <div class="form-row">
     <label for="node-input-backendUrl">Backend URL</label>
@@ -49,33 +146,48 @@
     <label for="node-input-deviceId">Device ID</label>
     <input type="text" id="node-input-deviceId" placeholder="lamp_virtual_1" />
   </div>
-  <div class="form-row">
+  <div class="form-row alice-register-only">
     <label for="node-input-deviceName">Device Name</label>
     <input type="text" id="node-input-deviceName" placeholder="Лампа кухня" />
   </div>
-  <div class="form-row">
+  <div class="form-row alice-register-only">
+    <label for="node-input-devicePreset">Preset</label>
+    <select id="node-input-devicePreset">
+      <option value="light">Light / Лампочка</option>
+      <option value="socket">Socket / Розетка</option>
+      <option value="switch">Switch / Выключатель</option>
+      <option value="temperature">Temperature sensor</option>
+      <option value="climate">Temp + humidity sensor</option>
+      <option value="contact">Door / contact sensor</option>
+      <option value="custom">Custom</option>
+    </select>
+  </div>
+  <div class="form-row alice-register-only" id="alice-device-type-row">
     <label for="node-input-deviceType">Device Type</label>
     <input type="text" id="node-input-deviceType" placeholder="devices.types.light" />
   </div>
-  <div class="form-row">
+  <div class="form-row alice-register-only">
     <label for="node-input-withOnOff">on/off</label>
     <input type="checkbox" id="node-input-withOnOff" style="width:auto;" />
   </div>
-  <div class="form-row">
+  <div class="form-row alice-register-only">
     <label for="node-input-withTemperature">temperature</label>
     <input type="checkbox" id="node-input-withTemperature" style="width:auto;" />
   </div>
-  <div class="form-row">
+  <div class="form-row alice-register-only">
     <label for="node-input-withHumidity">humidity</label>
     <input type="checkbox" id="node-input-withHumidity" style="width:auto;" />
   </div>
-  <div class="form-row">
+  <div class="form-row alice-register-only">
     <label for="node-input-withOpenSensor">open sensor</label>
     <input type="checkbox" id="node-input-withOpenSensor" style="width:auto;" />
   </div>
+  <div class="form-tips alice-register-only">
+    Choose a preset to auto-fill the device type and capabilities. In <code>state</code> mode only <code>Device ID</code> is required.
+  </div>
 </script>
 
-<script type="text/html" data-help-name="alice-device">
+<script type="text/html" data-help-name="golchomelab-virtual-device">
   <p>DIY node for GOLC Alice backend.</p>
   <p><b>register</b>: creates/updates virtual device in backend.</p>
   <p><b>state</b>: updates device state from <code>msg.state</code> or <code>msg.payload</code>.</p>
