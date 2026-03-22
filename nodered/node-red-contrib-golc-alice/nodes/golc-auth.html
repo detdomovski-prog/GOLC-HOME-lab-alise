@@ -4,14 +4,19 @@
     color: '#ffd86b',
     defaults: {
       name: { value: '' },
-      backendUrl: { value: 'http://localhost:3000', required: true },
-      passwordEndpoint: { value: '/alice/auth' },
+      clientId: { value: 'golc.daniar2017', required: true },
+      scope: { value: '' },
+      deviceEndpoint: { value: 'https://oauth.yandex.ru/device/code' },
+      tokenEndpoint: { value: 'https://oauth.yandex.ru/token' },
       includeAuthHeader: { value: true },
       alwaysSuccess: { value: false }
     },
     credentials: {
-      login: { type: 'text' },
-      password: { type: 'password' }
+      email: { type: 'text' },
+      userId: { type: 'text' },
+      accessToken: { type: 'password' },
+      refreshToken: { type: 'password' },
+      clientSecret: { type: 'password' }
     },
     inputs: 1,
     outputs: 1,
@@ -19,6 +24,110 @@
     paletteLabel: 'golc-auth',
     label: function () {
       return this.name || 'golc-auth';
+    },
+    oneditprepare: function () {
+      let activeFlowId = '';
+
+      function adminUrl(path) {
+        const root = (RED.settings.httpAdminRoot || '').replace(/\/$/, '');
+        return `${root}${path}`;
+      }
+
+      function setBusy(busy) {
+        $('#golc-auth-btn-start').prop('disabled', busy);
+        $('#golc-auth-btn-submit').prop('disabled', busy);
+      }
+
+      function notifyError(text) {
+        RED.notify(text, { type: 'error' });
+      }
+
+      $('#golc-auth-btn-start').on('click', function (event) {
+        event.preventDefault();
+        setBusy(true);
+
+        $.ajax({
+          url: adminUrl('/golchomelab/auth/device/start'),
+          type: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          data: JSON.stringify({
+            clientId: $('#node-input-clientId').val(),
+            clientSecret: $('#node-input-clientSecret').val(),
+            scope: $('#node-input-scope').val(),
+            deviceEndpoint: $('#node-input-deviceEndpoint').val(),
+            tokenEndpoint: $('#node-input-tokenEndpoint').val()
+          }),
+          dataType: 'json'
+        })
+          .done(function (data) {
+            if (!data || !data.ok) {
+              notifyError((data && data.error) || 'Не удалось запустить авторизацию');
+              return;
+            }
+
+            activeFlowId = data.flowId || '';
+            $('#node-input-verificationCode').val(data.user_code || '').trigger('change');
+            $('#golc-auth-current-code').text(data.user_code || '');
+
+            const openUrl = data.verification_url_with_code || data.verification_url;
+            if (openUrl) {
+              window.open(openUrl, '_blank');
+            }
+
+            RED.notify('Код получен. Подтверди доступ в Яндексе и нажми Submit.', { type: 'success' });
+          })
+          .fail(function (xhr) {
+            const err = xhr && xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ошибка старта авторизации';
+            notifyError(err);
+          })
+          .always(function () {
+            setBusy(false);
+          });
+      });
+
+      $('#golc-auth-btn-submit').on('click', function (event) {
+        event.preventDefault();
+
+        if (!activeFlowId) {
+          notifyError('Сначала нажми Yandex Authentication');
+          return;
+        }
+
+        setBusy(true);
+
+        $.ajax({
+          url: adminUrl('/golchomelab/auth/device/finish'),
+          type: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          data: JSON.stringify({
+            flowId: activeFlowId,
+            code: $('#node-input-verificationCode').val()
+          }),
+          dataType: 'json'
+        })
+          .done(function (data) {
+            if (!data || !data.ok) {
+              notifyError((data && data.error) || 'Ошибка подтверждения входа');
+              return;
+            }
+
+            $('#node-input-email').val(data.email || '').trigger('change');
+            $('#node-input-userId').val(data.id || '').trigger('change');
+            $('#node-input-accessToken').val(data.access_token || '').trigger('change');
+            $('#node-input-refreshToken').val(data.refresh_token || '').trigger('change');
+            $('#golc-auth-auth-result').text('Успешно ✅');
+            RED.notify('Авторизация успешна. Email и ID заполнены.', { type: 'success' });
+          })
+          .fail(function (xhr) {
+            const err = xhr && xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ошибка submit';
+            notifyError(err);
+          })
+          .always(function () {
+            setBusy(false);
+          });
+      });
+
+      $('#golc-auth-auth-result').text($('#node-input-email').val() ? 'Уже авторизован ✅' : 'Нет данных');
     }
   });
 </script>
@@ -29,28 +138,82 @@
     <input type="text" id="node-input-name" placeholder="golc-auth" />
   </div>
 
-  <div class="form-tips" style="margin-bottom: 12px; border-left: 4px solid #ff9800;">
-    <b>Один простой вход:</b> пользователь вводит логин и пароль прямо в ноде. Других режимов нет — только простой backend login.
+  <div class="form-row">
+    <label for="node-input-clientId">Client ID</label>
+    <input type="text" id="node-input-clientId" placeholder="golc.daniar2017" />
   </div>
 
   <div class="form-row">
-    <label for="node-input-backendUrl">URL backend</label>
-    <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
+    <label for="node-input-clientSecret">Client Secret</label>
+    <input type="password" id="node-input-clientSecret" placeholder="(опционально)" />
   </div>
 
   <div class="form-row">
-    <label for="node-input-login">Логин</label>
-    <input type="text" id="node-input-login" placeholder="user@yandex.ru" />
+    <label for="node-input-scope">Scope</label>
+    <input type="text" id="node-input-scope" placeholder="(опционально)" />
   </div>
 
   <div class="form-row">
-    <label for="node-input-password">Пароль</label>
-    <input type="password" id="node-input-password" placeholder="пароль аккаунта" />
+    <label for="node-input-deviceEndpoint">Device endpoint</label>
+    <input type="text" id="node-input-deviceEndpoint" placeholder="https://oauth.yandex.ru/device/code" />
   </div>
 
   <div class="form-row">
-    <label for="node-input-passwordEndpoint">Endpoint входа</label>
-    <input type="text" id="node-input-passwordEndpoint" placeholder="/alice/auth" />
+    <label for="node-input-tokenEndpoint">Token endpoint</label>
+    <input type="text" id="node-input-tokenEndpoint" placeholder="https://oauth.yandex.ru/token" />
+  </div>
+
+  <hr>
+
+  <div class="form-row">
+    <p><b>Credentials</b></p>
+  </div>
+
+  <div class="form-row">
+    <p>1. Нажми кнопку и подтверди доступ в Яндексе</p>
+    <label>Authentication</label>
+    <button id="golc-auth-btn-start" class="red-ui-button">Yandex Authentication</button>
+  </div>
+
+  <div class="form-row">
+    <p>2. Вставь код и нажми Submit</p>
+    <label for="node-input-verificationCode">Code</label>
+    <input type="text" id="node-input-verificationCode" style="width: 220px;" placeholder="verification code" />
+    <button id="golc-auth-btn-submit" class="red-ui-button" style="margin-left: 8px;">Submit</button>
+  </div>
+
+  <div class="form-tips" style="margin-bottom: 8px;">
+    Текущий код: <b id="golc-auth-current-code">—</b>
+  </div>
+
+  <div class="form-tips" style="margin-bottom: 12px;">
+    Tip: запрос может занять до 15-30 секунд после подтверждения доступа.
+  </div>
+
+  <hr>
+
+  <div class="form-row">
+    <p><b>Authentication result:</b> <span id="golc-auth-auth-result">Нет данных</span></p>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-email">Email</label>
+    <input type="text" id="node-input-email" readonly />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-userId">ID</label>
+    <input type="text" id="node-input-userId" readonly />
+  </div>
+
+  <div class="form-row" style="display:none;">
+    <label for="node-input-accessToken">Access Token</label>
+    <input type="password" id="node-input-accessToken" />
+  </div>
+
+  <div class="form-row" style="display:none;">
+    <label for="node-input-refreshToken">Refresh Token</label>
+    <input type="password" id="node-input-refreshToken" />
   </div>
 
   <div class="form-row">
@@ -64,24 +227,23 @@
     <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto;" />
     <span style="margin-left: 8px;">успешный ответ при таймауте backend</span>
   </div>
-
-  <div class="form-tips" style="margin-top: 10px;">
-    <b>Как пользоваться:</b><br/>
-    1) Введите логин и пароль в настройках ноды.<br/>
-    2) Отправьте в ноду любой <code>msg</code>.<br/>
-    3) На выходе получите <code>msg.access_token</code> и (опционально) <code>Authorization</code> header.
-  </div>
 </script>
 
 <script type="text/html" data-help-name="golchomelab-auth">
   <p><b>Упрощённая авторизация GOLC / Алисы</b></p>
-  <p>Один режим входа: <b>логин + пароль</b> через backend endpoint <code>/alice/auth</code>.</p>
+  <p>Режим как на старом скрине:</p>
+  <ol>
+    <li>Нажать <b>Yandex Authentication</b></li>
+    <li>Подтвердить доступ в Яндексе</li>
+    <li>Вставить код в поле <b>Code</b> и нажать <b>Submit</b></li>
+  </ol>
+  <p>После Submit поля <code>Email</code> и <code>ID</code> заполняются автоматически.</p>
 
   <h3>Выходные поля</h3>
   <ul>
     <li><code>msg.access_token</code> — токен доступа.</li>
-    <li><code>msg.token</code> — дубликат токена для совместимости.</li>
-    <li><code>msg.account_email</code> — email аккаунта.</li>
+    <li><code>msg.email</code> — email аккаунта.</li>
+    <li><code>msg.id</code> — ID аккаунта Яндекс.</li>
     <li><code>msg.headers.Authorization</code> — Bearer header, если включено.</li>
   </ul>
 </script>

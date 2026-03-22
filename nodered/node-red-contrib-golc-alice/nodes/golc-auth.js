@@ -1,14 +1,8 @@
 const http = require('http');
 const https = require('https');
+const crypto = require('crypto');
 
-function resolveUrl(baseUrl, pathOrUrl) {
-  if (/^https?:\/\//i.test(pathOrUrl || '')) {
-    return pathOrUrl;
-  }
-  const cleanBase = (baseUrl || '').replace(/\/$/, '');
-  const cleanPath = (pathOrUrl || '').startsWith('/') ? pathOrUrl : `/${pathOrUrl || ''}`;
-  return `${cleanBase}${cleanPath}`;
-}
+const deviceFlows = new Map();
 
 function requestJson(method, targetUrl, headers, body, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -73,91 +67,225 @@ function requestJson(method, targetUrl, headers, body, timeoutMs) {
   });
 }
 
+function cleanupFlows() {
+  const now = Date.now();
+  for (const [flowId, flow] of deviceFlows.entries()) {
+    if (now - flow.createdAt > 15 * 60 * 1000) {
+      deviceFlows.delete(flowId);
+    }
+  }
+}
+
+async function requestDeviceCode(clientId, scope, deviceEndpoint) {
+  if (!clientId) {
+    throw new Error('Нужен client_id');
+  }
+
+  const params = new URLSearchParams();
+  params.set('client_id', clientId);
+  if (scope) params.set('scope', scope);
+
+  const response = await requestJson(
+    'POST',
+    deviceEndpoint,
+    { 'Content-Type': 'application/x-www-form-urlencoded' },
+    params.toString(),
+    10000
+  );
+
+  if (response.statusCode >= 400) {
+    const errorText = response.body && response.body.error ? response.body.error : `HTTP ${response.statusCode}`;
+    throw new Error(`Не удалось получить код: ${errorText}`);
+  }
+
+  if (!response.body || !response.body.device_code || !response.body.user_code) {
+    throw new Error('Яндекс не вернул device_code/user_code');
+  }
+
+  return response.body;
+}
+
+async function waitForToken(flow, timeoutMs) {
+  const started = Date.now();
+  let intervalMs = flow.intervalMs;
+
+  while (Date.now() - started < timeoutMs) {
+    const params = new URLSearchParams();
+    params.set('grant_type', 'device_code');
+    params.set('code', flow.device_code);
+    params.set('client_id', flow.clientId);
+    if (flow.clientSecret) params.set('client_secret', flow.clientSecret);
+
+    const response = await requestJson(
+      'POST',
+      flow.tokenEndpoint,
+      { 'Content-Type': 'application/x-www-form-urlencoded' },
+      params.toString(),
+      10000
+    );
+
+    if (response.statusCode < 400 && response.body && response.body.access_token) {
+      return response.body;
+    }
+
+    const oauthError = response.body && response.body.error ? response.body.error : `HTTP ${response.statusCode}`;
+    if (oauthError === 'authorization_pending') {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      continue;
+    }
+
+    if (oauthError === 'slow_down') {
+      intervalMs += 5000;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      continue;
+    }
+
+    throw new Error(`Авторизация не завершена: ${oauthError}`);
+  }
+
+  throw new Error('Истекло время ожидания подтверждения');
+}
+
+async function fetchYandexUserInfo(accessToken) {
+  const response = await requestJson(
+    'GET',
+    'https://login.yandex.ru/info?format=json',
+    {
+      Authorization: `OAuth ${accessToken}`
+    },
+    null,
+    10000
+  );
+
+  if (response.statusCode >= 400) {
+    const errorText = response.body && response.body.error ? response.body.error : `HTTP ${response.statusCode}`;
+    throw new Error(`Не удалось получить профиль: ${errorText}`);
+  }
+
+  return response.body || {};
+}
+
 module.exports = function (RED) {
+  RED.httpAdmin.post('/golchomelab/auth/device/start', RED.auth.needsPermission(''), async (req, res) => {
+    try {
+      cleanupFlows();
+
+      const clientId = String((req.body && req.body.clientId) || '').trim();
+      const scope = String((req.body && req.body.scope) || '').trim();
+      const tokenEndpoint = String((req.body && req.body.tokenEndpoint) || 'https://oauth.yandex.ru/token').trim();
+      const deviceEndpoint = String((req.body && req.body.deviceEndpoint) || 'https://oauth.yandex.ru/device/code').trim();
+      const clientSecret = String((req.body && req.body.clientSecret) || '').trim();
+
+      const codeData = await requestDeviceCode(clientId, scope, deviceEndpoint);
+      const flowId = crypto.randomBytes(12).toString('hex');
+
+      const verificationUrl = codeData.verification_url || 'https://oauth.yandex.ru/device';
+      const verificationUrlWithCode = `${verificationUrl}?code=${encodeURIComponent(codeData.user_code)}&cid=${encodeURIComponent(clientId)}`;
+
+      deviceFlows.set(flowId, {
+        flowId,
+        clientId,
+        clientSecret,
+        tokenEndpoint,
+        device_code: codeData.device_code,
+        user_code: codeData.user_code,
+        intervalMs: Math.max(Number(codeData.interval) || 5, 3) * 1000,
+        createdAt: Date.now()
+      });
+
+      res.json({
+        ok: true,
+        flowId,
+        user_code: codeData.user_code,
+        verification_url: verificationUrl,
+        verification_url_with_code: verificationUrlWithCode,
+        expires_in: codeData.expires_in || 0
+      });
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message || 'Ошибка запуска авторизации' });
+    }
+  });
+
+  RED.httpAdmin.post('/golchomelab/auth/device/finish', RED.auth.needsPermission(''), async (req, res) => {
+    try {
+      const flowId = String((req.body && req.body.flowId) || '').trim();
+      if (!flowId || !deviceFlows.has(flowId)) {
+        res.status(400).json({ ok: false, error: 'Сессия авторизации не найдена. Нажмите Yandex Authentication снова.' });
+        return;
+      }
+
+      const flow = deviceFlows.get(flowId);
+      const tokenData = await waitForToken(flow, 120000);
+      const profile = await fetchYandexUserInfo(tokenData.access_token);
+      deviceFlows.delete(flowId);
+
+      res.json({
+        ok: true,
+        email: profile.default_email || profile.login || '',
+        id: profile.id || profile.uid || '',
+        token: tokenData,
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token || '',
+        expires_in: tokenData.expires_in || 0
+      });
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message || 'Ошибка подтверждения авторизации' });
+    }
+  });
+
   function GolcAliceAuthNode(config) {
     RED.nodes.createNode(this, config);
     const node = this;
 
-    node.backendUrl = (config.backendUrl || 'http://localhost:3000').replace(/\/$/, '');
-    node.passwordEndpoint = config.passwordEndpoint || '/alice/auth';
+    node.clientId = config.clientId || '';
+    node.scope = config.scope || '';
     node.includeAuthHeader = config.includeAuthHeader !== false;
     node.alwaysSuccess = config.alwaysSuccess === true || config.alwaysSuccess === 'true';
-    node.login = (node.credentials && node.credentials.login) || '';
-    node.password = (node.credentials && node.credentials.password) || '';
 
-    function pick(msg, payload, key, fallback) {
-      if (msg[key] !== undefined && msg[key] !== null && msg[key] !== '') return msg[key];
-      if (payload[key] !== undefined && payload[key] !== null && payload[key] !== '') return payload[key];
-      return fallback;
-    }
+    node.email = (node.credentials && node.credentials.email) || '';
+    node.userId = (node.credentials && node.credentials.userId) || '';
+    node.accessToken = (node.credentials && node.credentials.accessToken) || '';
+    node.refreshToken = (node.credentials && node.credentials.refreshToken) || '';
 
-    async function backendLogin(msg, payload) {
-      const login = String(pick(msg, payload, 'login', node.login) || '').trim();
-      const password = String(pick(msg, payload, 'password', node.password) || '').trim();
-      const endpoint = pick(msg, payload, 'passwordEndpoint', node.passwordEndpoint);
-
-      if (!login || !password) {
-        throw new Error('Нужно заполнить логин и пароль в ноде или передать их в msg.payload');
-      }
-
-      const response = await requestJson(
-        'POST',
-        resolveUrl(node.backendUrl, endpoint),
-        { 'Content-Type': 'application/json' },
-        { login, password },
-        10000
-      );
-
-      if (response.statusCode >= 400) {
-        const errorText = response.body && (response.body.error || response.body.message)
-          ? (response.body.error || response.body.message)
-          : `HTTP ${response.statusCode}`;
-        throw new Error(`Авторизация не удалась: ${errorText}`);
-      }
-
-      const token = response.body && (response.body.access_token || response.body.token);
-      if (!token) {
-        throw new Error('Бэкенд не вернул access_token/token');
-      }
-
-      msg.token = token;
-      msg.access_token = token;
-      msg.user_id = response.body.user_id || response.body.uid || '';
-      msg.account_email = response.body.account_email || response.body.email || login;
-      msg.authResult = response.body;
-      msg.statusCode = response.statusCode;
-      msg.payload = response.body;
-
-      if (node.includeAuthHeader && token) {
-        msg.headers = msg.headers || {};
-        msg.headers.Authorization = `Bearer ${token}`;
-      }
-
-      return msg;
-    }
-
-    node.on('input', async (msg, send, done) => {
+    node.on('input', (msg, send, done) => {
       const sender = send || node.send.bind(node);
-      const payload = msg.payload && typeof msg.payload === 'object' && !Array.isArray(msg.payload)
-        ? msg.payload
-        : {};
 
       try {
-        node.status({ fill: 'blue', shape: 'dot', text: 'auth login...' });
-        const outMsg = await backendLogin(msg, payload);
-        node.status({ fill: 'green', shape: 'dot', text: `вошли: ${outMsg.account_email || 'ok'}` });
-        sender(outMsg);
-        done();
-      } catch (error) {
-        if (error.message === 'TIMEOUT' && node.alwaysSuccess) {
-          node.status({ fill: 'yellow', shape: 'ring', text: 'таймаут, авто-ответ' });
-          msg.statusCode = 200;
-          msg.payload = { status: 'ok' };
-          sender(msg);
-          done();
+        if (!node.accessToken) {
+          if (node.alwaysSuccess) {
+            msg.payload = {
+              status: 'no_token',
+              email: node.email,
+              id: node.userId
+            };
+            sender(msg);
+            done();
+            return;
+          }
+          done(new Error('Нет токена. Откройте ноду golc-auth и пройдите авторизацию.'));
           return;
         }
 
+        msg.email = node.email;
+        msg.id = node.userId;
+        msg.access_token = node.accessToken;
+        msg.refresh_token = node.refreshToken;
+        msg.payload = {
+          email: node.email,
+          id: node.userId,
+          access_token: node.accessToken,
+          refresh_token: node.refreshToken
+        };
+
+        if (node.includeAuthHeader) {
+          msg.headers = msg.headers || {};
+          msg.headers.Authorization = `Bearer ${node.accessToken}`;
+        }
+
+        node.status({ fill: 'green', shape: 'dot', text: node.email ? `ok: ${node.email}` : 'ok' });
+        sender(msg);
+        done();
+      } catch (error) {
         node.status({ fill: 'red', shape: 'ring', text: 'auth error' });
         done(error);
       }
@@ -166,8 +294,11 @@ module.exports = function (RED) {
 
   RED.nodes.registerType('golchomelab-auth', GolcAliceAuthNode, {
     credentials: {
-      login: { type: 'text' },
-      password: { type: 'password' }
+      email: { type: 'text' },
+      userId: { type: 'text' },
+      accessToken: { type: 'password' },
+      refreshToken: { type: 'password' },
+      clientSecret: { type: 'password' }
     }
   });
 };
