@@ -5,19 +5,26 @@
     defaults: {
       name: { value: '' },
       backendUrl: { value: 'http://localhost:3000', required: true },
-      action: { value: 'get_token', required: true },
-      authEndpoint: { value: '/endpoint/auth' },
-      tokenEndpoint: { value: '/endpoint/token' },
+      action: { value: 'device_code', required: true },
+      passwordEndpoint: { value: '/alice/auth' },
+      authEndpoint: { value: 'https://oauth.yandex.ru/authorize' },
+      deviceEndpoint: { value: 'https://oauth.yandex.ru/device/code' },
+      tokenEndpoint: { value: 'https://oauth.yandex.ru/token' },
       clientId: { value: '' },
       redirectUri: { value: '' },
       scope: { value: '' },
       code: { value: '' },
       state: { value: '' },
       grantType: { value: 'authorization_code' },
-      includeAuthHeader: { value: true }
+      includeAuthHeader: { value: true },
+      autoPoll: { value: true },
+      pollInterval: { value: 5 },
+      alwaysSuccess: { value: false }
     },
     credentials: {
-      clientSecret: { type: 'password' }
+      clientSecret: { type: 'password' },
+      login: { type: 'text' },
+      password: { type: 'password' }
     },
     inputs: 1,
     outputs: 1,
@@ -28,9 +35,22 @@
     },
     oneditprepare: function () {
       function syncRows() {
-        const isBuildUrl = $('#node-input-action').val() === 'build_auth_url';
-        $('.golc-auth-token-only').toggle(!isBuildUrl);
+        const action = $('#node-input-action').val();
+        const isBackend = action === 'backend_login';
+        const isDevice = action === 'device_code';
+        const isBuildUrl = action === 'build_auth_url';
+        const isLegacyToken = action === 'get_token';
+
+        $('.golc-auth-backend-only').toggle(isBackend);
+        $('.golc-auth-device-only').toggle(isDevice);
         $('.golc-auth-url-only').toggle(isBuildUrl);
+        $('.golc-auth-token-only').toggle(isLegacyToken);
+        $('.golc-auth-oauth-common').toggle(isDevice || isBuildUrl || isLegacyToken);
+        $('.golc-auth-backend-url').toggle(isBackend);
+
+        $('#golc-auth-mode-note-backend').toggle(isBackend);
+        $('#golc-auth-mode-note-device').toggle(isDevice);
+        $('#golc-auth-mode-note-url').toggle(isBuildUrl || isLegacyToken);
       }
 
       $('#node-input-action').on('change', syncRows);
@@ -41,81 +61,160 @@
 
 <script type="text/html" data-template-name="golchomelab-auth">
   <div class="form-row">
-    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <label for="node-input-name"><i class="fa fa-tag"></i> Название</label>
     <input type="text" id="node-input-name" placeholder="golc-auth" />
   </div>
 
   <div class="form-row">
-    <label for="node-input-backendUrl">Backend URL</label>
-    <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
-  </div>
-
-  <div class="form-row">
-    <label for="node-input-action">Action</label>
+    <label for="node-input-action">Режим входа</label>
     <select id="node-input-action">
-      <option value="get_token">Get token</option>
-      <option value="build_auth_url">Build auth URL</option>
+      <option value="backend_login">Логин и пароль в ноде</option>
+      <option value="device_code">Официальный вход Яндекса по коду</option>
+      <option value="build_auth_url">Собрать OAuth URL</option>
+      <option value="get_token">Обменять code на token</option>
     </select>
   </div>
 
-  <div class="form-row golc-auth-url-only">
-    <label for="node-input-authEndpoint">Auth endpoint</label>
-    <input type="text" id="node-input-authEndpoint" placeholder="/endpoint/auth" />
+  <div class="form-tips" id="golc-auth-mode-note-backend" style="display:none; margin-bottom: 12px; border-left: 4px solid #ff9800;">
+    <b>Простой режим:</b> пользователь открывает ноду, вводит логин и пароль и запускает вход. Это <b>кастомный backend flow</b>; для аккаунтов с 2FA лучше использовать режим с кодом.
   </div>
 
-  <div class="form-row golc-auth-token-only">
-    <label for="node-input-tokenEndpoint">Token endpoint</label>
-    <input type="text" id="node-input-tokenEndpoint" placeholder="/endpoint/token" />
+  <div class="form-tips" id="golc-auth-mode-note-device" style="display:none; margin-bottom: 12px; border-left: 4px solid #4caf50;">
+    <b>Рекомендуемый режим:</b> нода получает <code>user_code</code> и <code>verification_url</code>. Пользователь открывает ссылку в браузере или на телефоне, проходит вход и 2FA у Яндекса, после чего нода сама получает токен.
   </div>
 
-  <div class="form-row">
+  <div class="form-tips" id="golc-auth-mode-note-url" style="display:none; margin-bottom: 12px; border-left: 4px solid #2196f3;">
+    <b>Совместимость:</b> эти режимы оставлены для классического OAuth по <code>authorization_code</code>.
+  </div>
+
+  <div class="form-row golc-auth-backend-url golc-auth-backend-only" style="display:none;">
+    <label for="node-input-backendUrl">URL backend</label>
+    <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
+  </div>
+
+  <div class="form-row golc-auth-backend-only" style="display:none;">
+    <label for="node-input-login">Логин</label>
+    <input type="text" id="node-input-login" placeholder="user@yandex.ru" />
+  </div>
+
+  <div class="form-row golc-auth-backend-only" style="display:none;">
+    <label for="node-input-password">Пароль</label>
+    <input type="password" id="node-input-password" placeholder="пароль аккаунта" />
+  </div>
+
+  <div class="form-row golc-auth-backend-only" style="display:none;">
+    <label for="node-input-passwordEndpoint">Endpoint входа</label>
+    <input type="text" id="node-input-passwordEndpoint" placeholder="/alice/auth" />
+  </div>
+
+  <div class="form-row golc-auth-oauth-common" style="display:none;">
     <label for="node-input-clientId">Client ID</label>
-    <input type="text" id="node-input-clientId" placeholder="your-client-id" />
+    <input type="text" id="node-input-clientId" placeholder="client_id приложения Яндекс OAuth" />
   </div>
 
-  <div class="form-row golc-auth-token-only">
+  <div class="form-row golc-auth-token-only" style="display:none;">
     <label for="node-input-clientSecret">Client Secret</label>
-    <input type="password" id="node-input-clientSecret" placeholder="your-client-secret" />
+    <input type="password" id="node-input-clientSecret" placeholder="client_secret" />
   </div>
 
-  <div class="form-row">
-    <label for="node-input-redirectUri">Redirect URI</label>
-    <input type="text" id="node-input-redirectUri" placeholder="https://social.yandex.net/broker/redirect" />
+  <div class="form-row golc-auth-device-only" style="display:none;">
+    <label for="node-input-deviceEndpoint">Device endpoint</label>
+    <input type="text" id="node-input-deviceEndpoint" placeholder="https://oauth.yandex.ru/device/code" />
   </div>
 
-  <div class="form-row">
+  <div class="form-row golc-auth-device-only golc-auth-token-only" style="display:none;">
+    <label for="node-input-tokenEndpoint">Token endpoint</label>
+    <input type="text" id="node-input-tokenEndpoint" placeholder="https://oauth.yandex.ru/token" />
+  </div>
+
+  <div class="form-row golc-auth-url-only" style="display:none;">
+    <label for="node-input-authEndpoint">Auth endpoint</label>
+    <input type="text" id="node-input-authEndpoint" placeholder="https://oauth.yandex.ru/authorize" />
+  </div>
+
+  <div class="form-row golc-auth-oauth-common" style="display:none;">
     <label for="node-input-scope">Scope</label>
-    <input type="text" id="node-input-scope" placeholder="" />
+    <input type="text" id="node-input-scope" placeholder="опционально" />
   </div>
 
-  <div class="form-row golc-auth-token-only">
-    <label for="node-input-grantType">Grant Type</label>
+  <div class="form-row golc-auth-url-only golc-auth-token-only" style="display:none;">
+    <label for="node-input-redirectUri">Redirect URI</label>
+    <input type="text" id="node-input-redirectUri" placeholder="https://example.com/callback" />
+  </div>
+
+  <div class="form-row golc-auth-token-only" style="display:none;">
+    <label for="node-input-grantType">Grant type</label>
     <input type="text" id="node-input-grantType" placeholder="authorization_code" />
   </div>
 
-  <div class="form-row golc-auth-token-only">
-    <label for="node-input-code">Auth Code</label>
-    <input type="text" id="node-input-code" placeholder="test-code" />
+  <div class="form-row golc-auth-token-only" style="display:none;">
+    <label for="node-input-code">Code</label>
+    <input type="text" id="node-input-code" placeholder="код авторизации" />
   </div>
 
-  <div class="form-row">
+  <div class="form-row golc-auth-url-only golc-auth-token-only" style="display:none;">
     <label for="node-input-state">State</label>
     <input type="text" id="node-input-state" placeholder="optional-state" />
   </div>
 
-  <div class="form-row golc-auth-token-only">
-    <label for="node-input-includeAuthHeader">Set Authorization</label>
-    <input type="checkbox" id="node-input-includeAuthHeader" style="width:auto;" />
+  <div class="form-row golc-auth-device-only" style="display:none;">
+    <label for="node-input-pollInterval">Интервал опроса</label>
+    <input type="number" id="node-input-pollInterval" min="1" placeholder="5" style="width: 100px;" />
+    <span style="margin-left: 8px;">сек</span>
   </div>
 
-  <div class="form-tips">
-    <b>Get token:</b> sends POST to token endpoint and sets <code>msg.oauth</code>, <code>msg.access_token</code>, and optionally <code>msg.headers.Authorization</code>.<br/>
-    <b>Build auth URL:</b> creates <code>msg.authUrl</code> for redirect-based authorization flow.
+  <div class="form-row golc-auth-device-only" style="display:none;">
+    <label for="node-input-autoPoll">Автоопрос</label>
+    <input type="checkbox" id="node-input-autoPoll" style="width:auto;" />
+    <span style="margin-left: 8px;">автоматически ждать подтверждение входа</span>
+  </div>
+
+  <div class="form-row golc-auth-token-only golc-auth-device-only" style="display:none;">
+    <label for="node-input-includeAuthHeader">Bearer header</label>
+    <input type="checkbox" id="node-input-includeAuthHeader" style="width:auto;" />
+    <span style="margin-left: 8px;">добавлять <code>Authorization: Bearer ...</code></span>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-alwaysSuccess">Fallback</label>
+    <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto;" />
+    <span style="margin-left: 8px;">успешный ответ при таймауте backend</span>
+  </div>
+
+  <div class="form-tips" style="margin-top: 10px;">
+    <b>Как пользоваться:</b><br/>
+    <b>Логин/пароль:</b> заполните поля в ноде и просто отправьте любой <code>msg</code> в ноду.<br/>
+    <b>Device flow:</b> отправьте любой <code>msg</code>, нода вернёт <code>user_code</code> и <code>verification_url</code>, после чего дождётся подтверждения входа. Этот режим подходит для пользователей с 2FA и входом с телефона.
   </div>
 </script>
 
 <script type="text/html" data-help-name="golchomelab-auth">
-  <p>Authorization helper node for GOLC Alice backend OAuth flow.</p>
-  <p><b>Get token</b> action requests token and outputs OAuth payload.</p>
-  <p><b>Build auth URL</b> action builds URL for opening auth page and receiving code.</p>
+  <p><b>Упрощённая авторизация GOLC / Алисы</b></p>
+  <p>Нода поддерживает два основных сценария:</p>
+  <ol>
+    <li><b>Логин и пароль в ноде</b> — удобный кастомный вход через ваш backend.</li>
+    <li><b>Официальный вход Яндекса по коду</b> — рекомендуемый сценарий для 2FA и входа с телефона.</li>
+  </ol>
+
+  <h3>Режимы</h3>
+  <dl class="message-properties">
+    <dt>Логин и пароль в ноде</dt>
+    <dd>Берёт <code>login</code> и <code>password</code> из сохранённых credentials ноды и вызывает ваш backend endpoint <code>/alice/auth</code>.</dd>
+    <dt>Официальный вход Яндекса по коду</dt>
+    <dd>Использует OAuth device flow: нода получает код, пользователь подтверждает вход на странице Яндекса, после чего нода получает токен. Подходит для 2FA.</dd>
+    <dt>Собрать OAuth URL / Обменять code на token</dt>
+    <dd>Старые режимы для классического OAuth flow сохранены для совместимости.</dd>
+  </dl>
+
+  <h3>Выходные поля</h3>
+  <ul>
+    <li><code>msg.access_token</code> — OAuth токен.</li>
+    <li><code>msg.user_code</code> — код подтверждения для device flow.</li>
+    <li><code>msg.verification_url</code> — ссылка, которую можно открыть в браузере или на телефоне.</li>
+    <li><code>msg.qrText</code> — текст для QR, если захотите показать QR в dashboard.</li>
+    <li><code>msg.headers.Authorization</code> — Bearer header, если включено.</li>
+  </ul>
+
+  <h3>Важно</h3>
+  <p>По официальной документации Яндекса прямой API-вход стороннего приложения через логин/пароль не является стандартным OAuth-сценарием. Для пользователей с двухфакторной авторизацией лучше использовать <b>device flow</b>.</p>
 </script>
