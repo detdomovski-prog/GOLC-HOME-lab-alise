@@ -1,64 +1,158 @@
 <script type="text/javascript">
   RED.nodes.registerType('golc-auth-simple', {
     category: 'golchomelab',
-    color: '#FFA500',
+    color: '#ffd86b',
     defaults: {
-      name: { value: 'Авторизация Алиса' },
+      name: { value: '' },
       backendUrl: { value: 'http://localhost:3000', required: true },
-      authEndpoint: { value: '/alice/auth' },
-      alwaysSuccess: { value: false }
+      username: { value: '', required: true }
+    },
+    credentials: {
+      password: { type: 'password' },
+      accessToken: { type: 'password' },
+      userId: { type: 'text' }
     },
     inputs: 1,
     outputs: 1,
     icon: 'golc.png',
+    paletteLabel: 'golc-auth-simple',
     label: function () {
       return this.name || 'golc-auth-simple';
     },
     oneditprepare: function () {
-      // При открытии диалога
-      if (!$('#node-input-backendUrl').val()) {
-        $('#node-input-backendUrl').val('http://localhost:3000');
-      }
-      if (!$('#node-input-authEndpoint').val()) {
-        $('#node-input-authEndpoint').val('/alice/auth');
+      $('#golc-auth-simple-btn-login').on('click', async function (event) {
+        event.preventDefault();
+
+        const username = $('#node-input-username').val().trim();
+        const password = $('#node-input-password').val().trim();
+        const backendUrl = $('#node-input-backendUrl').val().trim();
+
+        if (!username || !password) {
+          RED.notify('Укажи username и password', { type: 'error' });
+          return;
+        }
+
+        if (!backendUrl) {
+          RED.notify('Укажи Backend URL', { type: 'error' });
+          return;
+        }
+
+        try {
+          const response = await fetch(`${backendUrl}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            RED.notify(`Ошибка: ${error.error || response.statusText}`, { type: 'error' });
+            return;
+          }
+
+          const data = await response.json();
+
+          if (!data.ok || !data.access_token) {
+            RED.notify('Backend вернул неверный ответ', { type: 'error' });
+            return;
+          }
+
+          // Сохраняем токен и user_id
+          $('#node-input-accessToken').val(data.access_token).trigger('change');
+          $('#node-input-userId').val(data.user_id).trigger('change');
+          $('#golc-auth-simple-status').text(`✓ ${data.user_id}`);
+          RED.notify('✅ Авторизация успешна', { type: 'success' });
+        } catch (error) {
+          RED.notify(`Ошибка запроса: ${error.message}`, { type: 'error' });
+        }
+      });
+
+      // Инициализация статуса
+      const userId = $('#node-input-userId').val();
+      if (userId) {
+        $('#golc-auth-simple-status').text(`✓ ${userId}`);
       }
     }
   });
 </script>
 
-<script type="text/x-red" data-template-name="golc-auth-simple">
+<script type="text/html" data-template-name="golc-auth-simple">
   <div class="form-row">
-    <label for="node-input-name"><i class="fa fa-tag"></i> Название ноды</label>
-    <input type="text" id="node-input-name" placeholder="Авторизация Алиса" />
+    <label for="node-input-name"><i class="fa fa-tag"></i> Название</label>
+    <input type="text" id="node-input-name" placeholder="golc-auth-simple" />
   </div>
 
-  <div class="form-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
-    <label for="node-input-backendUrl">URL бэкенда</label>
+  <hr>
+
+  <div class="form-row">
+    <label for="node-input-backendUrl">Backend URL</label>
     <input type="text" id="node-input-backendUrl" placeholder="http://localhost:3000" />
   </div>
-
-  <div class="form-row">
-    <label for="node-input-authEndpoint">Endpoint аутентификации</label>
-    <input type="text" id="node-input-authEndpoint" placeholder="/alice/auth" />
+  <div class="form-tips" style="margin-top:-8px; margin-bottom:10px;">
+    URL твоего OAuth backend'а (например: https://твой.домен.kz)
   </div>
 
   <div class="form-row">
-    <label>&nbsp;</label>
-    <input type="checkbox" id="node-input-alwaysSuccess" style="display: inline-block; width: 20px; margin-right: 10px;">
-    <label for="node-input-alwaysSuccess" style="width: auto;">Авто-ответ при таймауте (при недоступности бэкенда)</label>
+    <label for="node-input-username">Username</label>
+    <input type="text" id="node-input-username" placeholder="admin" />
   </div>
 
-  <div class="form-tips" style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-left: 4px solid #FFA500;">
-    <p><strong>📋 Как использовать:</strong></p>
-    <ol style="margin: 10px 0; padding-left: 20px;">
-      <li>Отправьте в ноду объект: <code style="background: #fff; padding: 2px 5px;">{login: "user@yandex.ru", password: "pass123"}</code></li>
-      <li>Нода отправит запрос к бэкенду на аутентификацию</li>
-      <li>При успехе выведет <code>msg.token</code>, <code>msg.user_id</code>, <code>msg.account_email</code></li>
-    </ol>
+  <div class="form-row">
+    <label for="node-input-password">Password</label>
+    <input type="password" id="node-input-password" placeholder="пароль" />
+  </div>
 
-    <p><strong>🔑 Входящий msg.payload:</strong></p>
-    <ul style="margin: 5px 0; padding-left: 20px;">
-      <li><code>login</code> — логин Яндекс (email или yandex ID)</li>
+  <div class="form-row">
+    <button id="golc-auth-simple-btn-login" class="red-ui-button" style="background-color: #4CAF50;">
+      🔐 Login
+    </button>
+  </div>
+
+  <hr>
+
+  <div class="form-row">
+    <p><b>Status:</b> <span id="golc-auth-simple-status" style="color: #999;">нет авторизации</span></p>
+  </div>
+
+  <div class="form-row" style="display:none;">
+    <label for="node-input-accessToken">Access Token</label>
+    <input type="password" id="node-input-accessToken" />
+  </div>
+
+  <div class="form-row" style="display:none;">
+    <label for="node-input-userId">User ID</label>
+    <input type="text" id="node-input-userId" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="golc-auth-simple">
+  <p><b>Упрощённая авторизация для Node-RED</b></p>
+  
+  <h3>Как работает</h3>
+  <ol>
+    <li>Укажи URL твоего OAuth backend'а</li>
+    <li>Укажи username и password</li>
+    <li>Нажми <b>Login</b></li>
+    <li>Ноды автоматически получат <code>access_token</code> и сохранят его локально</li>
+  </ol>
+
+  <h3>Выходные данные</h3>
+  <ul>
+    <li><code>msg.access_token</code> — JWT токен для API</li>
+    <li><code>msg.user_id</code> — ID пользователя</li>
+    <li><code>msg.payload</code> — объект {access_token, user_id, status}</li>
+  </ul>
+
+  <h3>Архитектура</h3>
+  <p>Эта нода НЕ делает OAuth напрямую. Вместо этого:</p>
+  <ol>
+    <li>Обращается к backend'у через <code>/api/login</code></li>
+    <li>Backend'а проверяет логин/пароль</li>
+    <li>Backend возвращает <code>access_token</code></li>
+    <li>Ноди сохраняют токен локально в credentials Node-RED</li>
+  </ol>
+  <p>Настоящий OAuth происходит между Яндекс Алисой и backend'ом.</p>
+</script>
       <li><code>password</code> — пароль аккаунта</li>
     </ul>
 
