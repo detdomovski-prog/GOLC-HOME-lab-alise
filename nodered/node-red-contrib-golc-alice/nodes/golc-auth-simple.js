@@ -1,36 +1,25 @@
-/**
- * golc-auth-simple.js
- * 
- * Упрощённая авторизация в Node-RED
- * Не занимается OAuth — просто берёт access_token из backend'а
- * и сохраняет его локально
- */
-
 module.exports = function (RED) {
   function GolcAuthSimpleNode(config) {
     RED.nodes.createNode(this, config);
     const node = this;
 
-    // Конфиг
-    node.backendUrl = config.backendUrl || 'http://localhost:3000';
-    node.username = config.username || '';
-    
-    // Credentials
+    node.backendUrl = (config.backendUrl || 'http://127.0.0.1:3001').trim();
+    node.username = (config.username || '').trim();
+
     node.password = (node.credentials && node.credentials.password) || '';
     node.accessToken = (node.credentials && node.credentials.accessToken) || '';
     node.userId = (node.credentials && node.credentials.userId) || '';
 
-    /**
-     * Попытка авторизации через backend
-     */
     async function authenticate() {
       if (!node.username || !node.password) {
-        node.status({ fill: 'red', shape: 'ring', text: 'missing credentials' });
+        node.status({ fill: 'red', shape: 'ring', text: 'нужны логин/пароль' });
         return null;
       }
 
+      const baseUrl = (node.backendUrl || 'http://127.0.0.1:3001').replace(/\/$/, '');
+
       try {
-        const response = await fetch(`${node.backendUrl}/api/login`, {
+        const response = await fetch(`${baseUrl}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -39,44 +28,44 @@ module.exports = function (RED) {
           })
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (_err) {
+          data = {};
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error((data && data.error) || `HTTP ${response.status}`);
+        }
 
         if (!data.ok || !data.access_token) {
-          throw new Error('Invalid response from backend');
+          throw new Error('Неверный ответ от backend');
         }
 
-        // Сохраняем локально
         node.credentials.accessToken = data.access_token;
-        node.credentials.userId = data.user_id;
+        node.credentials.userId = data.user_id || '';
         node.accessToken = data.access_token;
-        node.userId = data.user_id;
+        node.userId = data.user_id || '';
+        RED.nodes.addCredentials(node.id, node.credentials);
 
         node.status({
           fill: 'green',
           shape: 'dot',
-          text: `✓ ${data.user_id}`
+          text: node.userId ? `✓ ${node.userId}` : '✓ authorized'
         });
 
-        RED.nodes.addCredentials(node.id, node.credentials);
         return data;
       } catch (error) {
-        node.status({
-          fill: 'red',
-          shape: 'ring',
-          text: `auth error: ${error.message}`
+        node.status({ fill: 'red', shape: 'ring', text: `auth error: ${error.message}` });
+        return null;
       }
     }
 
-    // На входящее сообщение → отправляем access_token
     node.on('input', async (msg, send, done) => {
       const sender = send || node.send.bind(node);
 
       try {
-        // Если нет токена → пытаемся авторизоваться
         if (!node.accessToken) {
           const authResult = await authenticate();
           if (!authResult) {
@@ -85,7 +74,6 @@ module.exports = function (RED) {
           }
         }
 
-        // Отправляем сообщение с токеном
         msg.access_token = node.accessToken;
         msg.user_id = node.userId;
         msg.payload = {
@@ -101,11 +89,10 @@ module.exports = function (RED) {
       }
     });
 
-    // Инициализация
     node.status({
       fill: node.accessToken ? 'green' : 'yellow',
       shape: 'ring',
-      text: node.accessToken ? `✓ ${node.userId}` : 'waiting'
+      text: node.accessToken ? (node.userId ? `✓ ${node.userId}` : '✓ token') : 'ожидание логина'
     });
   }
 
@@ -116,25 +103,4 @@ module.exports = function (RED) {
       userId: { type: 'text' }
     }
   });
-};
-        }
-
-      } catch (err) {
-        if (err.message === 'TIMEOUT' && node.alwaysSuccess) {
-          node.status({ fill: 'yellow', shape: 'ring', text: 'таймаут (авто-ответ)' });
-          msg.statusCode = 200;
-          msg.aliceResponse = { status: 'ok' };
-          sender(msg);
-          done();
-        } else {
-          node.status({ fill: 'red', shape: 'ring', text: 'ошибка' });
-          done(err);
-        }
-      }
-    });
-
-    node.on('close', () => { node.status({}); });
-  }
-
-  RED.nodes.registerType('golc-auth-simple', GolcAuthSimpleNode);
 };
