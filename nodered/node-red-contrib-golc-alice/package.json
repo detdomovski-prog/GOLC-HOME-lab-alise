@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "node-red-contrib-golc-alice",
   "version": "0.1.21",
   "description": "бета тестирование",
@@ -27,7 +27,8 @@
     "version": ">=3.0.0",
     "nodes": {
       "golchomelab-virtual-device": "nodes/golc-device.js",
-      "golchomelab-auth": "nodes/golc-auth.js",`n      "golc-auth-simple": "nodes/golc-auth-simple.js",
+      "golchomelab-auth": "nodes/golc-auth.js",
+      "golc-auth-simple": "nodes/golc-auth-simple.js",
       "device-profile-golc": "nodes/device-profile-golc.js",
       "on-off-golc": "nodes/on-off-golc.js",
       "range-golc": "nodes/range-golc.js",
@@ -40,4 +41,3 @@
     }
   }
 }
-
