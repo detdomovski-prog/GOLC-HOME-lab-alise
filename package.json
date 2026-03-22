@@ -1,7 +1,7 @@
 {
   "name": "golc-home-alice-backend",
   "version": "1.0.0",
-  "description": "Yandex Smart Home provider mock for Node-RED replacement (Express)",
+  "description": "бета тест",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",

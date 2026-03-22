@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-golc-alice",
-  "version": "0.1.0",
-  "description": "DIY Node-RED nodes for GOLC Alice smart home backend",
+  "version": "0.1.6",
+  "description": "бета тест",
   "main": "nodes/alice-device.js",
   "keywords": [
     "node-red",
@@ -12,6 +12,9 @@
   ],
   "author": "GOLC-HOME",
   "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/detdomovski-prog/GOLC-HOME-lab-alise.git"
@@ -21,8 +24,10 @@
   },
   "homepage": "https://github.com/detdomovski-prog/GOLC-HOME-lab-alise/tree/main/nodered/node-red-contrib-golc-alice",
   "node-red": {
+    "version": ">=3.0.0",
     "nodes": {
-      "alice-device": "nodes/alice-device.js"
+      "golchomelab-virtual-device": "nodes/alice-device.js",
+      "golchomelab-auth": "nodes/alice-auth.js"
     }
   }
 }
