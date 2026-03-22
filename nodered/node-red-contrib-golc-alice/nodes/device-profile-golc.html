@@ -18,38 +18,66 @@
       return room + (this.deviceName || 'профиль устройства');
     },
     oneditprepare: function () {
-      // Тип устройства — официальный список Яндекс Алисы с иконками в метках
-      const types = [
-        { value: 'devices.types.light',              label: '💡 Лампа' },
-        { value: 'devices.types.socket',             label: '🔌 Розетка' },
-        { value: 'devices.types.switch',             label: '🔀 Выключатель' },
-        { value: 'devices.types.thermostat',         label: '🌡 Термостат' },
-        { value: 'devices.types.thermostat.ac',      label: '❄️ Кондиционер' },
-        { value: 'devices.types.media_device',       label: '🎵 Мультимедиа' },
-        { value: 'devices.types.media_device.tv',    label: '📺 Телевизор' },
-        { value: 'devices.types.media_device.tv_box',label: '📦 ТВ-приставка' },
-        { value: 'devices.types.media_device.receiver', label: '📻 AV-ресивер' },
-        { value: 'devices.types.camera',             label: '📷 Камера' },
-        { value: 'devices.types.cooking',            label: '🍳 Кухонная техника' },
-        { value: 'devices.types.cooking.coffee_maker', label: '☕ Кофемашина' },
-        { value: 'devices.types.cooking.kettle',     label: '🫖 Чайник' },
-        { value: 'devices.types.cooking.multicooker', label: '🥘 Мультиварка' },
-        { value: 'devices.types.dishwasher',         label: '🍽 Посудомоечная машина' },
-        { value: 'devices.types.washing_machine',    label: '🫧 Стиральная машина' },
-        { value: 'devices.types.vacuum_cleaner',     label: '🤖 Пылесос' },
-        { value: 'devices.types.iron',               label: '👔 Утюг' },
-        { value: 'devices.types.fan',                label: '🌀 Вентилятор' },
-        { value: 'devices.types.humidifier',         label: '💧 Увлажнитель' },
-        { value: 'devices.types.purifier',           label: '🌬 Очиститель воздуха' },
-        { value: 'devices.types.other',              label: '🔧 Другое' }
-      ];
-
-      const sel = $('#node-config-input-deviceType');
-      sel.empty();
-      types.forEach(function (t) {
-        sel.append('<option value="' + t.value + '">' + t.label + '</option>');
+      // Полный список типов устройств Яндекс Алисы (официальная документация)
+      $('#node-config-input-deviceType').typedInput({
+        types: [
+          {
+            options: [
+              { value: 'devices.types.light',                    label: 'Лампа' },
+              { value: 'devices.types.light.lamp',               label: 'Лампа (настольная / торшер)' },
+              { value: 'devices.types.light.ceiling',            label: 'Лампа (потолочная)' },
+              { value: 'devices.types.light.strip',              label: 'Лента подсветки' },
+              { value: 'devices.types.socket',                   label: 'Розетка' },
+              { value: 'devices.types.switch',                   label: 'Выключатель' },
+              { value: 'devices.types.switch.relay',             label: 'Реле' },
+              { value: 'devices.types.thermostat',               label: 'Термостат' },
+              { value: 'devices.types.thermostat.ac',            label: 'Кондиционер' },
+              { value: 'devices.types.media_device',             label: 'Мультимедиа' },
+              { value: 'devices.types.media_device.tv',          label: 'Телевизор' },
+              { value: 'devices.types.media_device.tv_box',      label: 'ТВ-приставка' },
+              { value: 'devices.types.media_device.receiver',    label: 'AV-ресивер' },
+              { value: 'devices.types.camera',                   label: 'Камера' },
+              { value: 'devices.types.cooking',                  label: 'Кухонная техника' },
+              { value: 'devices.types.cooking.coffee_maker',     label: 'Кофемашина' },
+              { value: 'devices.types.cooking.kettle',           label: 'Умный чайник' },
+              { value: 'devices.types.cooking.multicooker',      label: 'Мультиварка' },
+              { value: 'devices.types.openable',                 label: 'Дверь / ворота / окно / жалюзи' },
+              { value: 'devices.types.openable.curtain',         label: 'Шторы / жалюзи' },
+              { value: 'devices.types.openable.valve',           label: 'Клапан (шаровой кран)' },
+              { value: 'devices.types.openable.door_lock',       label: 'Замок двери' },
+              { value: 'devices.types.humidifier',               label: 'Увлажнитель' },
+              { value: 'devices.types.purifier',                 label: 'Очиститель воздуха' },
+              { value: 'devices.types.ventilation',              label: 'Вентиляция' },
+              { value: 'devices.types.ventilation.fan',          label: 'Вентилятор' },
+              { value: 'devices.types.vacuum_cleaner',           label: 'Робот-пылесос' },
+              { value: 'devices.types.washing_machine',          label: 'Стиральная машина' },
+              { value: 'devices.types.dishwasher',               label: 'Посудомоечная машина' },
+              { value: 'devices.types.iron',                     label: 'Утюг / парогенератор' },
+              { value: 'devices.types.sensor',                   label: 'Датчик' },
+              { value: 'devices.types.sensor.motion',            label: 'Датчик движения' },
+              { value: 'devices.types.sensor.vibration',         label: 'Датчик вибрации' },
+              { value: 'devices.types.sensor.illumination',      label: 'Датчик освещённости' },
+              { value: 'devices.types.sensor.open',              label: 'Датчик открытия' },
+              { value: 'devices.types.sensor.climate',           label: 'Датчик климата' },
+              { value: 'devices.types.sensor.water_leak',        label: 'Датчик протечки' },
+              { value: 'devices.types.sensor.button',            label: 'Датчик-кнопка' },
+              { value: 'devices.types.sensor.gas',               label: 'Датчик газа' },
+              { value: 'devices.types.sensor.smoke',             label: 'Датчик дыма' },
+              { value: 'devices.types.smart_meter',              label: 'Счётчик' },
+              { value: 'devices.types.smart_meter.cold_water',   label: 'Счётчик холодной воды' },
+              { value: 'devices.types.smart_meter.hot_water',    label: 'Счётчик горячей воды' },
+              { value: 'devices.types.smart_meter.electricity',  label: 'Счётчик электроэнергии' },
+              { value: 'devices.types.smart_meter.gas',          label: 'Счётчик газа' },
+              { value: 'devices.types.smart_meter.heat',         label: 'Счётчик тепла' },
+              { value: 'devices.types.pet_drinking_fountain',    label: 'Поилка для животных' },
+              { value: 'devices.types.pet_feeder',               label: 'Кормушка для животных' },
+              { value: 'devices.types.other',                    label: 'Другое' }
+            ]
+          }
+        ]
       });
-      sel.val(this.deviceType || 'devices.types.light');
+      // Восстанавливаем сохранённое значение
+      $('#node-config-input-deviceType').typedInput('value', this.deviceType || 'devices.types.light');
     }
   });
 </script>
@@ -82,7 +110,7 @@
   </div>
   <div class="form-row">
     <label for="node-config-input-deviceType"><i class="fa fa-list"></i> Тип устройства</label>
-    <select id="node-config-input-deviceType" style="width:70%;"></select>
+    <input type="text" id="node-config-input-deviceType">
   </div>
 </script>
 
