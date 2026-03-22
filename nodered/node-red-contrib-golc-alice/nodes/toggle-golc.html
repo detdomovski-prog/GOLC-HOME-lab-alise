@@ -1,0 +1,123 @@
+<!-- ===== НОДА: toggle-golc ===== -->
+<script type="text/javascript">
+  RED.nodes.registerType('toggle-golc', {
+    category:    'golchomelab',
+    color:       '#a78bfa',
+    defaults: {
+      name:          { value: '' },
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      instance:      { value: 'backlight', required: true },
+      alwaysSuccess: { value: true }
+    },
+    inputs:  1,
+    outputs: 1,
+    icon:    'golc.png',
+    paletteLabel: 'переключатель',
+    label: function () {
+      if (this.name) return this.name;
+      var labels = {
+        backlight:       'подсветка',
+        controls_locked: 'блокировка',
+        ionization:      'ионизация',
+        keep_warm:       'подогрев',
+        mute:            'тишина',
+        oscillation:     'осцилляция',
+        pause:           'пауза'
+      };
+      var profileNode = RED.nodes.node(this.deviceProfile);
+      var dev = profileNode ? (profileNode.deviceRoom + ':' + profileNode.deviceName) : 'устройство';
+      return dev + ' [' + (labels[this.instance] || this.instance) + ']';
+    },
+    labelStyle: function () { return this.name ? 'node_label_italic' : ''; },
+    oneditprepare: function () {
+      var desc = {
+        backlight:       '💡 Подсветка устройства',
+        controls_locked: '🔒 Блокировка управления',
+        ionization:      '🌬 Ионизация воздуха',
+        keep_warm:       '☕ Поддержание тепла',
+        mute:            '🔇 Отключение звука',
+        oscillation:     '🌀 Осцилляция (поворот)',
+        pause:           '⏸ Пауза работы'
+      };
+      function updateDesc() {
+        var inst = $('#node-input-instance').val();
+        $('#golc-toggle-desc').text(desc[inst] || '');
+      }
+      $('#node-input-instance').on('change', updateDesc);
+      updateDesc();
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="toggle-golc">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Имя</label>
+    <input type="text" id="node-input-name" placeholder="Необязательное имя">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-deviceProfile"><i class="fa fa-microchip"></i> Устройство</label>
+    <input type="text" id="node-input-deviceProfile">
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label for="node-input-instance"><i class="fa fa-toggle-on"></i> Параметр</label>
+    <select id="node-input-instance" style="width:70%;">
+      <option value="backlight">💡 Подсветка</option>
+      <option value="controls_locked">🔒 Блокировка управления</option>
+      <option value="ionization">🌬 Ионизация</option>
+      <option value="keep_warm">☕ Поддержание тепла</option>
+      <option value="mute">🔇 Тишина (mute)</option>
+      <option value="oscillation">🌀 Осцилляция</option>
+      <option value="pause">⏸ Пауза</option>
+    </select>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small id="golc-toggle-desc" style="color:#aaa;"></small>
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto; margin-right:6px;">
+      <i class="fa fa-check-circle"></i> Авто-ответ Алисе
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small style="color:#aaa;">Если устройство не ответит за 2 сек — Алисе отправится авто-подтверждение</small>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="toggle-golc">
+  <p>Нода управления бинарными переключателями устройства Алисы (кроме вкл/выкл).</p>
+
+  <h3>Входящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">boolean</span></dt>
+    <dd><code>true</code> — включить параметр, <code>false</code> — выключить.</dd>
+    <dt>msg.deviceId <span class="property-type">string</span></dt>
+    <dd>Переопределяет ID устройства из профиля.</dd>
+  </dl>
+
+  <h3>Исходящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">boolean</span></dt>
+    <dd>Значение которое было отправлено.</dd>
+    <dt>msg.statusCode <span class="property-type">number</span></dt>
+    <dd>HTTP-статус ответа бэкенда.</dd>
+  </dl>
+
+  <h3>Параметры (instance)</h3>
+  <ul>
+    <li><b>backlight</b> — подсветка устройства</li>
+    <li><b>controls_locked</b> — блокировка кнопок управления</li>
+    <li><b>ionization</b> — ионизация воздуха</li>
+    <li><b>keep_warm</b> — поддержание тепла</li>
+    <li><b>mute</b> — отключение звука</li>
+    <li><b>oscillation</b> — поворот/осцилляция</li>
+    <li><b>pause</b> — пауза работы устройства</li>
+  </ul>
+</script>
