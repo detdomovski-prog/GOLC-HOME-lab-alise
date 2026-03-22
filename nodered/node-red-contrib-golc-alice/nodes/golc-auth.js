@@ -221,9 +221,7 @@ module.exports = function (RED) {
 
       res.json({
         ok: true,
-        email: profile.default_email || profile.login || '',
         id: profile.id || profile.uid || '',
-        token: tokenData,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token || '',
         expires_in: tokenData.expires_in || 0
@@ -239,10 +237,8 @@ module.exports = function (RED) {
 
     node.clientId = config.clientId || '';
     node.scope = config.scope || '';
-    node.includeAuthHeader = config.includeAuthHeader !== false;
     node.alwaysSuccess = config.alwaysSuccess === true || config.alwaysSuccess === 'true';
 
-    node.email = (node.credentials && node.credentials.email) || '';
     node.userId = (node.credentials && node.credentials.userId) || '';
     node.accessToken = (node.credentials && node.credentials.accessToken) || '';
     node.refreshToken = (node.credentials && node.credentials.refreshToken) || '';
@@ -255,8 +251,7 @@ module.exports = function (RED) {
           if (node.alwaysSuccess) {
             msg.payload = {
               status: 'no_token',
-              email: node.email,
-              id: node.userId
+              userId: node.userId || ''
             };
             sender(msg);
             done();
@@ -266,23 +261,15 @@ module.exports = function (RED) {
           return;
         }
 
-        msg.email = node.email;
+        msg.userId = node.userId;
         msg.id = node.userId;
-        msg.access_token = node.accessToken;
-        msg.refresh_token = node.refreshToken;
         msg.payload = {
-          email: node.email,
+          userId: node.userId,
           id: node.userId,
-          access_token: node.accessToken,
-          refresh_token: node.refreshToken
+          status: 'authorized'
         };
 
-        if (node.includeAuthHeader) {
-          msg.headers = msg.headers || {};
-          msg.headers.Authorization = `Bearer ${node.accessToken}`;
-        }
-
-        node.status({ fill: 'green', shape: 'dot', text: node.email ? `ok: ${node.email}` : 'ok' });
+        node.status({ fill: 'green', shape: 'dot', text: node.userId ? `ok: ${node.userId}` : 'ok' });
         sender(msg);
         done();
       } catch (error) {
@@ -294,7 +281,6 @@ module.exports = function (RED) {
 
   RED.nodes.registerType('golchomelab-auth', GolcAliceAuthNode, {
     credentials: {
-      email: { type: 'text' },
       userId: { type: 'text' },
       accessToken: { type: 'password' },
       refreshToken: { type: 'password' },

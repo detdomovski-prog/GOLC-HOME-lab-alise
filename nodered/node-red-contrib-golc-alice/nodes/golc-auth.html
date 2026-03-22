@@ -8,11 +8,9 @@
       scope: { value: '' },
       deviceEndpoint: { value: 'https://oauth.yandex.ru/device/code' },
       tokenEndpoint: { value: 'https://oauth.yandex.ru/token' },
-      includeAuthHeader: { value: true },
       alwaysSuccess: { value: false }
     },
     credentials: {
-      email: { type: 'text' },
       userId: { type: 'text' },
       accessToken: { type: 'password' },
       refreshToken: { type: 'password' },
@@ -111,12 +109,11 @@
               return;
             }
 
-            $('#node-input-email').val(data.email || '').trigger('change');
             $('#node-input-userId').val(data.id || '').trigger('change');
             $('#node-input-accessToken').val(data.access_token || '').trigger('change');
             $('#node-input-refreshToken').val(data.refresh_token || '').trigger('change');
             $('#golc-auth-auth-result').text('Успешно ✅');
-            RED.notify('Авторизация успешна. Email и ID заполнены.', { type: 'success' });
+            RED.notify('Авторизация успешна. ID сохранён локально.', { type: 'success' });
           })
           .fail(function (xhr) {
             const err = xhr && xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ошибка submit';
@@ -127,7 +124,7 @@
           });
       });
 
-      $('#golc-auth-auth-result').text($('#node-input-email').val() ? 'Уже авторизован ✅' : 'Нет данных');
+      $('#golc-auth-auth-result').text($('#node-input-userId').val() ? 'Уже авторизован ✅' : 'Нет данных');
     }
   });
 </script>
@@ -197,11 +194,6 @@
   </div>
 
   <div class="form-row">
-    <label for="node-input-email">Email</label>
-    <input type="text" id="node-input-email" readonly />
-  </div>
-
-  <div class="form-row">
     <label for="node-input-userId">ID</label>
     <input type="text" id="node-input-userId" readonly />
   </div>
@@ -214,12 +206,6 @@
   <div class="form-row" style="display:none;">
     <label for="node-input-refreshToken">Refresh Token</label>
     <input type="password" id="node-input-refreshToken" />
-  </div>
-
-  <div class="form-row">
-    <label for="node-input-includeAuthHeader">Bearer header</label>
-    <input type="checkbox" id="node-input-includeAuthHeader" style="width:auto;" />
-    <span style="margin-left: 8px;">добавлять <code>Authorization: Bearer ...</code></span>
   </div>
 
   <div class="form-row">
@@ -241,9 +227,10 @@
 
   <h3>Выходные поля</h3>
   <ul>
-    <li><code>msg.access_token</code> — токен доступа.</li>
-    <li><code>msg.email</code> — email аккаунта.</li>
-    <li><code>msg.id</code> — ID аккаунта Яндекс.</li>
-    <li><code>msg.headers.Authorization</code> — Bearer header, если включено.</li>
+    <li><code>msg.userId</code> / <code>msg.id</code> — ID аккаунта Яндекс.</li>
+    <li><code>msg.payload.status</code> — статус авторизации.</li>
   </ul>
+
+  <h3>Приватность</h3>
+  <p>Наружу нода отдаёт только <code>userId</code>. Токены остаются локально в credentials Node-RED.</p>
 </script>
