@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-golc-alice",
-  "version": "0.1.36",
+  "version": "1.1.0",
   "description": "бета тестирование",
   "main": "nodes/golc-device.js",
   "keywords": [
@@ -44,7 +44,8 @@
       "event-golc": "nodes/event-golc.js",
       "color-golc": "nodes/color-golc.js",
       "video-golc": "nodes/video-golc.js",
-      "qr-golc": "nodes/qr-golc.js"
+      "qr-golc": "nodes/qr-golc.js",
+      "golc-auth-easy": "nodes/golc-auth-easy.js"
     }
   }
 }

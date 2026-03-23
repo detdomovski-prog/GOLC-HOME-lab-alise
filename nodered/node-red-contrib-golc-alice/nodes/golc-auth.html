@@ -25,6 +25,7 @@
     },
     oneditprepare: function () {
       let activeFlowId = '';
+      let lastVerificationUrl = '';
 
       function adminUrl(path) {
         // Node-RED admin endpoints находятся по пути: httpAdminRoot + path
@@ -43,9 +44,15 @@
         RED.notify(text, { type: 'error' });
       }
 
+      // Кнопка "Получить код для Яндекса"
       $('#golc-auth-btn-start').on('click', function (event) {
         event.preventDefault();
         setBusy(true);
+
+        // Очищаем старый код и ссылку
+        $('#golc-auth-usercode').val('');
+        $('#golc-auth-current-code').text('—');
+        lastVerificationUrl = '';
 
         $.ajax({
           url: adminUrl('/golchomelab/auth/device/start'),
@@ -67,15 +74,35 @@
             }
 
             activeFlowId = data.flowId || '';
-            $('#node-input-verificationCode').val(data.user_code || '').trigger('change');
-            $('#golc-auth-current-code').text(data.user_code || '');
-
-            const openUrl = data.verification_url_with_code || data.verification_url;
-            if (openUrl) {
-              window.open(openUrl, '_blank');
+            const userCode = data.user_code || '';
+            $('#golc-auth-usercode').val(userCode);
+            $('#golc-auth-current-code').text(userCode);
+            $('#node-input-verificationCode').val(userCode).trigger('change');
+            lastVerificationUrl = data.verification_url_with_code || data.verification_url || '';
+            if (lastVerificationUrl) {
+              $('#golc-auth-open-yandex').prop('disabled', false);
             }
+            RED.notify('Код получен. 1) Скопируй код, 2) Открой Яндекс, 3) Подтверди доступ, 4) Нажми Submit.', { type: 'success' });
+                // Кнопка "Скопировать код"
+                $('#golc-auth-copy-code').on('click', function () {
+                  const code = $('#golc-auth-usercode').val();
+                  if (code) {
+                    navigator.clipboard.writeText(code).then(function () {
+                      RED.notify('Код скопирован в буфер обмена', { type: 'success' });
+                    }, function () {
+                      RED.notify('Не удалось скопировать код', { type: 'error' });
+                    });
+                  }
+                });
 
-            RED.notify('Код получен. Подтверди доступ в Яндексе и нажми Submit.', { type: 'success' });
+                // Кнопка "Открыть Яндекс"
+                $('#golc-auth-open-yandex').on('click', function () {
+                  if (lastVerificationUrl) {
+                    window.open(lastVerificationUrl, '_blank');
+                  } else {
+                    RED.notify('Сначала получите код!', { type: 'error' });
+                  }
+                });
           })
           .fail(function (xhr) {
             const err = (
@@ -180,15 +207,25 @@
     <p><b>Credentials</b></p>
   </div>
 
+
   <div class="form-row">
-    <p>1. Нажми кнопку и подтверди доступ в Яндексе</p>
-    <label>Authentication</label>
-    <button id="golc-auth-btn-start" class="red-ui-button">Yandex Authentication</button>
+    <b>1. Получить код для Яндекса</b><br>
+    <button id="golc-auth-btn-start" class="red-ui-button">Получить код</button>
   </div>
 
   <div class="form-row">
-    <p>2. Вставь код и нажми Submit</p>
-    <label for="node-input-verificationCode">Code</label>
+    <label for="golc-auth-usercode">Код подтверждения</label>
+    <input type="text" id="golc-auth-usercode" readonly style="width: 120px; margin-right: 8px;" />
+    <button id="golc-auth-copy-code" class="red-ui-button" type="button">Скопировать</button>
+    <button id="golc-auth-open-yandex" class="red-ui-button" type="button" disabled style="margin-left: 8px;">Открыть Яндекс</button>
+  </div>
+
+  <div class="form-tips" style="margin-bottom: 8px;">
+    <b>2. Откройте Яндекс, войдите (если потребуется), вставьте код и подтвердите доступ.</b>
+  </div>
+
+  <div class="form-row">
+    <b>3. Вставьте код (или скопируйте из поля выше) и нажмите Submit</b><br>
     <input type="text" id="node-input-verificationCode" style="width: 220px;" placeholder="verification code" />
     <button id="golc-auth-btn-submit" class="red-ui-button" style="margin-left: 8px;">Submit</button>
   </div>
@@ -198,7 +235,7 @@
   </div>
 
   <div class="form-tips" style="margin-bottom: 12px;">
-    Tip: запрос может занять до 15-30 секунд после подтверждения доступа.
+    Tip: если вы не авторизованы в Яндексе, сначала войдите, затем подтвердите доступ. Запрос может занять до 15-30 секунд после подтверждения.
   </div>
 
   <hr>

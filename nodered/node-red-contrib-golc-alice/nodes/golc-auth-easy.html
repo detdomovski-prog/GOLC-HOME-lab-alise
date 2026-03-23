@@ -1,0 +1,165 @@
+<script type="text/javascript">
+RED.nodes.registerType('golc-auth-easy', {
+  category: 'golchomelab',
+  color: '#ffd86b',
+  defaults: {
+    name: { value: '' }
+  },
+  credentials: {
+    accessToken: { type: 'password' },
+    userId: { type: 'text' }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: 'golc.png',
+  paletteLabel: 'golc-auth-easy',
+  label: function () {
+    return this.name || 'golc-auth-easy';
+  },
+  oneditprepare: function () {
+    let activeFlowId = '';
+    let verificationUrl = '';
+
+    function adminUrl(path) {
+      const root = (RED.settings && RED.settings.httpAdminRoot) || '/';
+      const cleanRoot = String(root).replace(/\/$/, '') || '';
+      return `${cleanRoot}${path}`;
+    }
+
+    function setBusy(busy) {
+      $("#golc-auth-easy-auth-btn").prop("disabled", busy);
+      $("#golc-auth-easy-submit-btn").prop("disabled", busy);
+      $("#golc-auth-easy-open-btn").prop("disabled", busy || !verificationUrl);
+    }
+
+    $("#golc-auth-easy-auth-btn").on("click", function(event) {
+      event.preventDefault();
+      setBusy(true);
+      $("#golc-auth-easy-code").val('');
+      $("#golc-auth-easy-current-code").text('—');
+      verificationUrl = '';
+
+      $.ajax({
+        url: adminUrl('/golchomelab/auth/easy/start'),
+        type: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        data: JSON.stringify({}),
+        dataType: 'json'
+      }).done(function(data) {
+        if (!data || !data.ok) {
+          RED.notify((data && data.error) || 'Не удалось получить код', { type: 'error' });
+          return;
+        }
+
+        activeFlowId = data.flowId || '';
+        const userCode = data.user_code || '';
+        verificationUrl = data.verification_url_with_code || data.verification_url || '';
+
+        $("#golc-auth-easy-code").val(userCode);
+        $("#golc-auth-easy-current-code").text(userCode || '—');
+        $("#golc-auth-easy-code-form").slideDown(200);
+        $("#golc-auth-easy-open-btn").prop("disabled", !verificationUrl);
+
+        RED.notify('Код получен. Открой Яндекс, подтверди доступ и нажми Submit.', { type: 'success' });
+      }).fail(function(xhr) {
+        const err = (xhr && xhr.responseJSON && xhr.responseJSON.error) || (xhr && xhr.responseText) || 'Ошибка старта авторизации';
+        RED.notify(err, { type: 'error' });
+      }).always(function() {
+        setBusy(false);
+      });
+    });
+
+    $("#golc-auth-easy-open-btn").on("click", function(event) {
+      event.preventDefault();
+      if (!verificationUrl) {
+        RED.notify('Сначала нажмите Yandex Authentication', { type: 'warning' });
+        return;
+      }
+      window.open(verificationUrl, '_blank');
+    });
+
+    $("#golc-auth-easy-submit-btn").on("click", function(event) {
+      event.preventDefault();
+      if (!activeFlowId) {
+        RED.notify('Сначала нажмите Yandex Authentication', { type: 'error' });
+        return;
+      }
+
+      setBusy(true);
+      $.ajax({
+        url: adminUrl('/golchomelab/auth/easy/finish'),
+        type: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        data: JSON.stringify({ flowId: activeFlowId, code: $("#golc-auth-easy-code").val() }),
+        dataType: 'json'
+      }).done(function(data) {
+        if (!data || !data.ok) {
+          RED.notify((data && data.error) || 'Ошибка подтверждения входа', { type: 'error' });
+          return;
+        }
+
+        $("#node-input-accessToken").val(data.access_token || '').trigger('change');
+        $("#node-input-userId").val(data.id || '').trigger('change');
+        $("#golc-auth-easy-result").text('Успешно ✅');
+        RED.notify('Авторизация успешна. Нажмите Done и Deploy.', { type: 'success' });
+      }).fail(function(xhr) {
+        const err = (xhr && xhr.responseJSON && xhr.responseJSON.error) || (xhr && xhr.responseText) || 'Ошибка submit';
+        RED.notify(err, { type: 'error' });
+      }).always(function() {
+        setBusy(false);
+      });
+    });
+
+    $("#golc-auth-easy-result").text($("#node-input-userId").val() ? 'Уже авторизован ✅' : 'Нет данных');
+    $("#golc-auth-easy-open-btn").prop("disabled", true);
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="golc-auth-easy">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Название</label>
+    <input type="text" id="node-input-name" placeholder="golc-auth-easy" />
+  </div>
+  <div class="form-row">
+    <button id="golc-auth-easy-auth-btn" type="button" style="background:#ffdb4d;color:#222;font-weight:bold;border-radius:4px;padding:6px 16px;margin-bottom:8px;">
+      <i class="fa fa-yandex"></i> Yandex Authentication
+    </button>
+  </div>
+  <div id="golc-auth-easy-code-form" style="display:none;">
+    <div class="form-row">
+      <label for="golc-auth-easy-code">Код подтверждения</label>
+      <input type="text" id="golc-auth-easy-code" placeholder="Введите код" />
+      <button id="golc-auth-easy-open-btn" type="button" class="red-ui-button" style="margin-left:8px;">Открыть Яндекс</button>
+    </div>
+    <div class="form-row">
+      <button id="golc-auth-easy-submit-btn" type="button" style="background:#ffd86b;color:#222;font-weight:bold;border-radius:4px;padding:6px 16px;">Submit</button>
+    </div>
+    <div class="form-tips" style="margin-bottom:8px;">Текущий код: <b id="golc-auth-easy-current-code">—</b></div>
+  </div>
+  <div class="form-tips" style="margin-bottom: 12px; color: #c00;">
+    ВНИМАНИЕ: Неофициальная авторизация! Используйте только для домашнего/DIY применения. Яндекс может заблокировать этот способ в любой момент.<br>
+    UX: Кнопка "Yandex Authentication" — поле для кода — кнопка Submit.
+  </div>
+  <div class="form-row">
+    <label for="node-input-accessToken">Access Token</label>
+    <input type="password" id="node-input-accessToken" readonly />
+  </div>
+  <div class="form-row">
+    <label for="node-input-userId">User ID</label>
+    <input type="text" id="node-input-userId" readonly />
+  </div>
+  <div class="form-row">
+    <p><b>Authentication result:</b> <span id="golc-auth-easy-result">Нет данных</span></p>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="golc-auth-easy">
+  <p><b>Неофициальная авторизация Яндекс (только для домашнего использования!)</b></p>
+  <ol>
+    <li>Нажмите кнопку "Yandex Authentication"</li>
+    <li>Введите полученный код и нажмите Submit</li>
+    <li>Токен и User ID появятся автоматически</li>
+  </ol>
+  <p style="color: #c00;"><b>ВНИМАНИЕ:</b> Этот способ может быть заблокирован Яндексом в любой момент. Не используйте для коммерческих решений!</p>
+</script>
