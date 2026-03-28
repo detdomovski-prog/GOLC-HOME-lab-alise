@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-golc-alice",
-  "version": "1.1.0",
+  "version": "1.1.17",
   "description": "бета тестирование",
   "main": "nodes/golc-device.js",
   "keywords": [
