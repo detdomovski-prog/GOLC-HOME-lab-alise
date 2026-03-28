@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!-- QR icon: 3 corner squares + dots pattern -->
+  <rect width="40" height="40" rx="6" fill="#fc3f1d"/>
+  <!-- Top-left corner square -->
+  <rect x="5" y="5" width="13" height="13" rx="1" fill="white"/>
+  <rect x="7" y="7" width="9" height="9" rx="0.5" fill="#fc3f1d"/>
+  <rect x="9" y="9" width="5" height="5" fill="white"/>
+  <!-- Top-right corner square -->
+  <rect x="22" y="5" width="13" height="13" rx="1" fill="white"/>
+  <rect x="24" y="7" width="9" height="9" rx="0.5" fill="#fc3f1d"/>
+  <rect x="26" y="9" width="5" height="5" fill="white"/>
+  <!-- Bottom-left corner square -->
+  <rect x="5" y="22" width="13" height="13" rx="1" fill="white"/>
+  <rect x="7" y="24" width="9" height="9" rx="0.5" fill="#fc3f1d"/>
+  <rect x="9" y="26" width="5" height="5" fill="white"/>
+  <!-- Data dots (bottom-right area) -->
+  <rect x="22" y="22" width="3" height="3" fill="white"/>
+  <rect x="27" y="22" width="3" height="3" fill="white"/>
+  <rect x="32" y="22" width="3" height="3" fill="white"/>
+  <rect x="22" y="27" width="3" height="3" fill="white"/>
+  <rect x="32" y="27" width="3" height="3" fill="white"/>
+  <rect x="27" y="32" width="3" height="3" fill="white"/>
+  <rect x="32" y="32" width="3" height="3" fill="white"/>
+</svg>

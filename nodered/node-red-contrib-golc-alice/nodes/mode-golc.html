@@ -1,0 +1,150 @@
+<!-- ===== НОДА: mode-golc ===== -->
+<script type="text/javascript">
+  var GOLC_MODE_PRESETS = {
+    cleanup_mode:     ['auto', 'eco', 'express', 'normal', 'quiet'],
+    coffee_mode:      ['americano', 'cappuccino', 'double_espresso', 'espresso', 'latte'],
+    multicooker_mode: ['vacuum', 'boiling', 'baking', 'dessert', 'baby_food', 'fowl', 'frying', 'yogurt', 'cereals', 'macaroni', 'milk_porridge', 'multicooker', 'steam', 'pasta', 'pizza', 'pilaf', 'sauce', 'soup', 'stewing', 'slow_cook', 'deep_fryer', 'bread', 'aspic', 'cheesecake', 'preheat'],
+    tea_mode:         ['black_tea', 'flower_tea', 'green_tea', 'herbal_tea', 'oolong_tea', 'puerh_tea', 'red_tea', 'white_tea'],
+    fan_speed:        ['auto', 'high', 'low', 'medium', 'turbo'],
+    heat:             ['auto', 'max', 'min', 'normal', 'turbo'],
+    input_source:     ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'],
+    program:          ['auto', 'express', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'],
+    swing:            ['auto', 'horizontal', 'stationary', 'vertical'],
+    thermostat:       ['auto', 'cool', 'dry', 'fan_only', 'heat', 'preheat'],
+    work_speed:       ['auto', 'fast', 'max', 'medium', 'min', 'slow', 'turbo']
+  };
+
+  RED.nodes.registerType('mode-golc', {
+    category: 'golchomelab',
+    color: '#32b3b3',
+    defaults: {
+      name: { value: '' },
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      instance: { value: 'thermostat', required: true },
+      modesCsv: { value: 'auto,cool,dry,fan_only,heat,preheat', required: true },
+      alwaysSuccess: { value: true }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'golc.png',
+    paletteLabel: 'режим',
+    label: function () {
+      if (this.name) return this.name;
+      var profileNode = RED.nodes.node(this.deviceProfile);
+      var deviceLabel = profileNode ? (profileNode.deviceRoom + ':' + profileNode.deviceName) : 'устройство';
+      return deviceLabel + ' [' + (this.instance || 'mode') + ']';
+    },
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : '';
+    },
+    oneditprepare: function () {
+      function setModesByInstance(instance, forceReplace) {
+        var preset = GOLC_MODE_PRESETS[instance] || [];
+        if (forceReplace || !$('#node-input-modesCsv').val().trim()) {
+          $('#node-input-modesCsv').val(preset.join(','));
+        }
+      }
+
+      function updateInstanceDesc() {
+        var instance = $('#node-input-instance').val();
+        var labels = {
+          cleanup_mode: 'Режим уборки',
+          coffee_mode: 'Режим приготовления кофе',
+          multicooker_mode: 'Режим мультиварки',
+          tea_mode: 'Режим чая',
+          fan_speed: 'Скорость вентилятора',
+          heat: 'Режим нагрева',
+          input_source: 'Источник сигнала/вход',
+          program: 'Программа работы',
+          swing: 'Направление/качание',
+          thermostat: 'Режим термостата',
+          work_speed: 'Скорость работы'
+        };
+        $('#golc-mode-desc').text(labels[instance] || '');
+      }
+
+      $('#node-input-instance').on('change', function () {
+        setModesByInstance($(this).val(), true);
+        updateInstanceDesc();
+      });
+
+      updateInstanceDesc();
+      if (!this.modesCsv || !this.modesCsv.trim()) {
+        setModesByInstance($('#node-input-instance').val(), true);
+      }
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="mode-golc">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Имя</label>
+    <input type="text" id="node-input-name" placeholder="Необязательное имя">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-deviceProfile"><i class="fa fa-microchip"></i> Устройство</label>
+    <input type="text" id="node-input-deviceProfile">
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label for="node-input-instance"><i class="fa fa-list"></i> Тип режима</label>
+    <select id="node-input-instance" style="width:70%;">
+      <option value="cleanup_mode">🧹 Режим уборки</option>
+      <option value="coffee_mode">☕ Режим кофе</option>
+      <option value="multicooker_mode">🍲 Режим мультиварки</option>
+      <option value="tea_mode">🍵 Режим чая</option>
+      <option value="fan_speed">🌀 Скорость вентилятора</option>
+      <option value="heat">🔥 Режим нагрева</option>
+      <option value="input_source">🔌 Источник сигнала</option>
+      <option value="program">📋 Программа</option>
+      <option value="swing">↔️ Качание</option>
+      <option value="thermostat">🌡 Термостат</option>
+      <option value="work_speed">⚙️ Скорость работы</option>
+    </select>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small id="golc-mode-desc" style="color:#aaa;"></small>
+  </div>
+
+  <div class="form-row" style="margin-top:10px;">
+    <label for="node-input-modesCsv"><i class="fa fa-check-square-o"></i> Допустимые режимы</label>
+    <input type="text" id="node-input-modesCsv" placeholder="auto,cool,dry,fan_only,heat,preheat">
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small style="color:#aaa;">Список через запятую. В `msg.payload` можно передавать только значения из этого списка.</small>
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto; margin-right:6px;">
+      <i class="fa fa-check-circle"></i> Авто-ответ Алисе
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small style="color:#aaa;">Если устройство не ответит за 2 сек — Алисе отправится авто-подтверждение.</small>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="mode-golc">
+  <p>Нода управления режимами устройства Алисы.</p>
+
+  <h3>Входящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">string</span></dt>
+    <dd>Значение режима, например <code>eco</code>, <code>auto</code>, <code>cool</code>.</dd>
+    <dt>msg.deviceId <span class="property-type">string</span></dt>
+    <dd>Переопределяет ID устройства из профиля.</dd>
+  </dl>
+
+  <h3>Правила</h3>
+  <ul>
+    <li>Режим должен быть в списке <b>Допустимые режимы</b>.</li>
+    <li>Если значение не изменилось — повторная отправка не выполняется.</li>
+    <li>Состояние отправляется в backend на <code>/internal/devices/:id/state</code>.</li>
+  </ul>
+</script>

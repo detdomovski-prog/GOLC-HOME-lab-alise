@@ -1,0 +1,101 @@
+﻿<script type="text/javascript">
+  RED.nodes.registerType('alice-service', {
+    category: 'config',
+    defaults: {
+      name: { value: null },
+      apiBaseUrl: { value: 'https://alice.golchomelab.kz', required: true }
+    },
+    credentials: {
+      email: { type: 'text', required: true },
+      password: { type: 'password', required: true },
+      token: { type: 'password', required: true },
+      id: { type: 'text', required: true }
+    },
+    label: function () {
+      return this.name || this.id || 'alice-service';
+    },
+    oneditprepare: function () {
+      if (!$('#node-config-input-apiBaseUrl').val()) {
+        $('#node-config-input-apiBaseUrl').val('https://alice.golchomelab.kz');
+      }
+    },
+    oneditsave: function () {
+      const nodeName = $('#node-config-input-id').val();
+      $('#node-config-input-name').val(nodeName);
+    }
+  });
+
+  function clearDevicesConfigOnGateway(serviceId) {
+    if (!serviceId) {
+      RED.notify('Сначала сохрани config-ноду', { type: 'warning' });
+      return;
+    }
+
+    RED.notify('Request sent, please wait...', { type: 'compact' });
+    $.ajax({
+      url: `/noderedhome/${serviceId}/clearalldevice`,
+      type: 'GET'
+    })
+      .done(() => {
+        RED.notify('All configs cleared successfully', { type: 'success' });
+      })
+      .fail(() => {
+        RED.notify('Error when deleting configs on gateway', { type: 'error' });
+      });
+  }
+</script>
+
+<script type="text/x-red" data-template-name="alice-service">
+  <input type="hidden" id="node-config-input-name">
+
+  <div class="form-row"><b>Local credentials (stored in Node-RED)</b></div>
+
+  <div class="form-row">
+    <label for="node-config-input-email">Email</label>
+    <input type="text" id="node-config-input-email" placeholder="user@example.com" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-id">Login (Yandex ID)</label>
+    <input type="text" id="node-config-input-id" placeholder="your-yandex-id" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-password">Password</label>
+    <input type="password" id="node-config-input-password" placeholder="your-yandex-password" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-token">OAuth token</label>
+    <input type="password" id="node-config-input-token" placeholder='{"access_token":"..."} или токен строкой' />
+  </div>
+
+  <div class="form-tips" style="margin-bottom: 12px;">
+    Пароль и токен не отправляются в backend авторизации, используются локально в Node-RED для MQTT подключения.
+  </div>
+
+  <details style="margin: 8px 0 12px 0;">
+    <summary style="cursor:pointer;">Дополнительно (API URL)</summary>
+    <div class="form-row" style="margin-top:8px;">
+      <label for="node-config-input-apiBaseUrl">API Base URL</label>
+      <input type="text" id="node-config-input-apiBaseUrl" placeholder="https://alice.golchomelab.kz" />
+    </div>
+    <div class="form-tips" id="node-tip">
+      Используется для синхронизации конфигов/состояния устройств через gateway API.
+    </div>
+  </details>
+
+  <hr>
+
+  <div class="form-row"><b>Service tools</b></div>
+  <div class="form-tips">
+    <span>Очистка конфигов устройств на backend gateway.</span>
+    <div style="text-align: end; margin-top: 8px;">
+      <button
+        onclick="clearDevicesConfigOnGateway($('#node-config-input-id').val())"
+        class="ui-button">
+        Clear data on gateway
+      </button>
+    </div>
+  </div>
+</script>

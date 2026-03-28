@@ -1,0 +1,134 @@
+<!-- ===== CONFIG NODE: device-profile-golc ===== -->
+<script type="text/javascript">
+  RED.nodes.registerType('device-profile-golc', {
+    category: 'config',
+    defaults: {
+      deviceName:        { value: '', required: true },
+      deviceDescription: { value: '' },
+      deviceRoom:        { value: 'Комната' },
+      deviceType:        { value: 'devices.types.light', required: true }
+    },
+    credentials: {
+      userLabel:     { type: 'text'     },
+      backendUrl:    { type: 'text'     },
+      internalToken: { type: 'password' }
+    },
+    label: function () {
+      const room = this.deviceRoom ? this.deviceRoom + ':' : '';
+      return room + (this.deviceName || 'профиль устройства');
+    },
+    oneditprepare: function () {
+      // Полный список типов устройств Яндекс Алисы (официальная документация)
+      $('#node-config-input-deviceType').typedInput({
+        types: [
+          {
+            options: [
+              { value: 'devices.types.light',                    label: 'Лампа' },
+              { value: 'devices.types.light.lamp',               label: 'Лампа (настольная / торшер)' },
+              { value: 'devices.types.light.ceiling',            label: 'Лампа (потолочная)' },
+              { value: 'devices.types.light.strip',              label: 'Лента подсветки' },
+              { value: 'devices.types.socket',                   label: 'Розетка' },
+              { value: 'devices.types.switch',                   label: 'Выключатель' },
+              { value: 'devices.types.switch.relay',             label: 'Реле' },
+              { value: 'devices.types.thermostat',               label: 'Термостат' },
+              { value: 'devices.types.thermostat.ac',            label: 'Кондиционер' },
+              { value: 'devices.types.media_device',             label: 'Мультимедиа' },
+              { value: 'devices.types.media_device.tv',          label: 'Телевизор' },
+              { value: 'devices.types.media_device.tv_box',      label: 'ТВ-приставка' },
+              { value: 'devices.types.media_device.receiver',    label: 'AV-ресивер' },
+              { value: 'devices.types.camera',                   label: 'Камера' },
+              { value: 'devices.types.cooking',                  label: 'Кухонная техника' },
+              { value: 'devices.types.cooking.coffee_maker',     label: 'Кофемашина' },
+              { value: 'devices.types.cooking.kettle',           label: 'Умный чайник' },
+              { value: 'devices.types.cooking.multicooker',      label: 'Мультиварка' },
+              { value: 'devices.types.openable',                 label: 'Дверь / ворота / окно / жалюзи' },
+              { value: 'devices.types.openable.curtain',         label: 'Шторы / жалюзи' },
+              { value: 'devices.types.openable.valve',           label: 'Клапан (шаровой кран)' },
+              { value: 'devices.types.openable.door_lock',       label: 'Замок двери' },
+              { value: 'devices.types.humidifier',               label: 'Увлажнитель' },
+              { value: 'devices.types.purifier',                 label: 'Очиститель воздуха' },
+              { value: 'devices.types.ventilation',              label: 'Вентиляция' },
+              { value: 'devices.types.ventilation.fan',          label: 'Вентилятор' },
+              { value: 'devices.types.vacuum_cleaner',           label: 'Робот-пылесос' },
+              { value: 'devices.types.washing_machine',          label: 'Стиральная машина' },
+              { value: 'devices.types.dishwasher',               label: 'Посудомоечная машина' },
+              { value: 'devices.types.iron',                     label: 'Утюг / парогенератор' },
+              { value: 'devices.types.sensor',                   label: 'Датчик' },
+              { value: 'devices.types.sensor.motion',            label: 'Датчик движения' },
+              { value: 'devices.types.sensor.vibration',         label: 'Датчик вибрации' },
+              { value: 'devices.types.sensor.illumination',      label: 'Датчик освещённости' },
+              { value: 'devices.types.sensor.open',              label: 'Датчик открытия' },
+              { value: 'devices.types.sensor.climate',           label: 'Датчик климата' },
+              { value: 'devices.types.sensor.water_leak',        label: 'Датчик протечки' },
+              { value: 'devices.types.sensor.button',            label: 'Датчик-кнопка' },
+              { value: 'devices.types.sensor.gas',               label: 'Датчик газа' },
+              { value: 'devices.types.sensor.smoke',             label: 'Датчик дыма' },
+              { value: 'devices.types.smart_meter',              label: 'Счётчик' },
+              { value: 'devices.types.smart_meter.cold_water',   label: 'Счётчик холодной воды' },
+              { value: 'devices.types.smart_meter.hot_water',    label: 'Счётчик горячей воды' },
+              { value: 'devices.types.smart_meter.electricity',  label: 'Счётчик электроэнергии' },
+              { value: 'devices.types.smart_meter.gas',          label: 'Счётчик газа' },
+              { value: 'devices.types.smart_meter.heat',         label: 'Счётчик тепла' },
+              { value: 'devices.types.pet_drinking_fountain',    label: 'Поилка для животных' },
+              { value: 'devices.types.pet_feeder',               label: 'Кормушка для животных' },
+              { value: 'devices.types.other',                    label: 'Другое' }
+            ]
+          }
+        ]
+      });
+      // Восстанавливаем сохранённое значение
+      $('#node-config-input-deviceType').typedInput('value', this.deviceType || 'devices.types.light');
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="device-profile-golc">
+  <div class="form-row">
+    <label for="node-config-input-userLabel"><i class="fa fa-user"></i> Учётные данные</label>
+    <input type="text" id="node-config-input-userLabel" placeholder="Например: golc.user@yandex.ru">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-backendUrl"><i class="fa fa-server"></i> Адрес бэкенда</label>
+    <input type="text" id="node-config-input-backendUrl" placeholder="http://localhost:3000">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-internalToken"><i class="fa fa-key"></i> Внутренний токен</label>
+    <input type="password" id="node-config-input-internalToken" placeholder="local-internal-token">
+  </div>
+  <hr/>
+  <div class="form-row">
+    <label for="node-config-input-deviceName"><i class="fa fa-tag"></i> Название</label>
+    <input type="text" id="node-config-input-deviceName" placeholder="Например: Люстра в гостиной">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-deviceDescription"><i class="fa fa-info-circle"></i> Описание</label>
+    <input type="text" id="node-config-input-deviceDescription" placeholder="Необязательное описание">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-deviceRoom"><i class="fa fa-home"></i> Комната</label>
+    <input type="text" id="node-config-input-deviceRoom" placeholder="Комната">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-deviceType"><i class="fa fa-list"></i> Тип устройства</label>
+    <input type="text" id="node-config-input-deviceType">
+  </div>
+</script>
+
+<script type="text/html" data-help-name="device-profile-golc">
+  <p>Конфигурационная нода профиля устройства для Яндекс Алисы.</p>
+  <h3>Параметры</h3>
+  <dl class="message-properties">
+    <dt>Учётные данные</dt>
+    <dd>Метка авторизованного пользователя (логин/email). Хранится зашифрованно.</dd>
+    <dt>Адрес бэкенда</dt>
+    <dd>URL бэкенда умного дома GOLC (например <code>http://192.168.1.100:3000</code>).</dd>
+    <dt>Внутренний токен</dt>
+    <dd>Токен авторизации запросов к бэкенду (<code>X-Internal-Token</code>).</dd>
+    <dt>Название</dt>
+    <dd>Имя устройства, отображаемое в Алисе.</dd>
+    <dt>Комната</dt>
+    <dd>Название комнаты. Используется как метка ноды.</dd>
+    <dt>Тип устройства</dt>
+    <dd>Официальный тип устройства из документации Яндекс (определяет иконку и управление в Алисе).</dd>
+  </dl>
+</script>

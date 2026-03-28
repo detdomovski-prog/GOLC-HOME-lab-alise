@@ -1,0 +1,204 @@
+<!-- ===== НОДА: range-golc ===== -->
+<script type="text/javascript">
+  // Преднастройки для каждого типа диапазона
+  var GOLC_RANGE_PRESETS = {
+    brightness:  { unit: 'unit.percent',             min: 0,   max: 100,  precision: 10, unitLabel: '%',      unitDisabled: true,  minDisabled: true,  maxDisabled: true  },
+    volume:      { unit: 'unit.number',              min: 0,   max: 100,  precision: 10, unitLabel: 'число',  unitDisabled: true,  minDisabled: false, maxDisabled: false },
+    channel:     { unit: 'unit.number',              min: 1,   max: 1000, precision: 1,  unitLabel: 'число',  unitDisabled: true,  minDisabled: false, maxDisabled: false },
+    humidity:    { unit: 'unit.percent',             min: 0,   max: 100,  precision: 10, unitLabel: '%',      unitDisabled: true,  minDisabled: true,  maxDisabled: true  },
+    open:        { unit: 'unit.percent',             min: 0,   max: 100,  precision: 10, unitLabel: '%',      unitDisabled: true,  minDisabled: true,  maxDisabled: true  },
+    temperature: { unit: 'unit.temperature.celsius', min: 0,   max: 100,  precision: 1,  unitLabel: '°C/K',   unitDisabled: false, minDisabled: false, maxDisabled: false }
+  };
+
+  RED.nodes.registerType('range-golc', {
+    category:    'golchomelab',
+    color:       '#f0a030',
+    defaults: {
+      name:          { value: '' },
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      instance:      { value: 'brightness', required: true },
+      unit:          { value: 'unit.percent' },
+      min:           { value: 0 },
+      max:           { value: 100 },
+      precision:     { value: 10 },
+      retrievable:   { value: true },
+      alwaysSuccess: { value: true }
+    },
+    inputs:  1,
+    outputs: 1,
+    icon:    'golc.png',
+    paletteLabel: 'диапазон',
+    label: function () {
+      if (this.name) return this.name;
+      const labels = {
+        brightness: 'яркость', volume: 'громкость', channel: 'канал',
+        humidity: 'влажность', open: 'открытие', temperature: 'температура'
+      };
+      const profileNode = RED.nodes.node(this.deviceProfile);
+      const dev = profileNode ? (profileNode.deviceRoom + ':' + profileNode.deviceName) : 'устройство';
+      return dev + ' [' + (labels[this.instance] || this.instance) + ']';
+    },
+    labelStyle: function () { return this.name ? 'node_label_italic' : ''; },
+
+    oneditprepare: function () {
+      var self = this;
+
+      function applyPreset(inst, firstRun) {
+        var p = GOLC_RANGE_PRESETS[inst];
+        if (!p) return;
+
+        // При первом открытии — восстанавливаем сохранённые значения
+        var min  = firstRun ? self.min  : p.min;
+        var max  = firstRun ? self.max  : p.max;
+        var prec = firstRun ? self.precision : p.precision;
+        var unit = firstRun ? self.unit : p.unit;
+
+        // Обновляем unit select
+        var $unit = $('#node-input-unit');
+        $unit.empty();
+        if (inst === 'temperature') {
+          $unit.append('<option value="unit.temperature.celsius">Цельсий (°C)</option>');
+          $unit.append('<option value="unit.temperature.kelvin">Кельвин (K)</option>');
+          $unit.prop('disabled', false);
+        } else {
+          $unit.append('<option value="' + p.unit + '">' + p.unitLabel + '</option>');
+          $unit.prop('disabled', true);
+        }
+        $unit.val(unit);
+
+        $('#node-input-min').val(min).prop('disabled', p.minDisabled && !firstRun ? true : (inst !== 'temperature' && inst !== 'volume' && inst !== 'channel' ? p.minDisabled : false));
+        $('#node-input-max').val(max).prop('disabled', p.maxDisabled && !firstRun ? true : (inst !== 'temperature' && inst !== 'volume' && inst !== 'channel' ? p.maxDisabled : false));
+        $('#node-input-min').prop('disabled', p.minDisabled);
+        $('#node-input-max').prop('disabled', p.maxDisabled);
+        $('#node-input-precision').val(prec);
+      }
+
+      // Первое применение — с сохранёнными значениями
+      applyPreset($('#node-input-instance').val(), true);
+
+      // При изменении типа — применяем defaults
+      $('#node-input-instance').on('change', function () {
+        applyPreset($(this).val(), false);
+      });
+
+      // Описание типа
+      var desc = {
+        brightness:  'Яркость лампы (0–100%)',
+        volume:      'Громкость звука',
+        channel:     'Номер канала',
+        humidity:    'Влажность (0–100%)',
+        open:        'Степень открытия (0–100%)',
+        temperature: 'Температура (с выбором единицы)'
+      };
+      function updateDesc() {
+        var inst = $('#node-input-instance').val();
+        $('#golc-range-desc').text(desc[inst] || '');
+      }
+      $('#node-input-instance').on('change', updateDesc);
+      updateDesc();
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="range-golc">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Имя</label>
+    <input type="text" id="node-input-name" placeholder="Необязательное имя">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-deviceProfile"><i class="fa fa-microchip"></i> Устройство</label>
+    <input type="text" id="node-input-deviceProfile">
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label for="node-input-instance"><i class="fa fa-sliders"></i> Тип диапазона</label>
+    <select id="node-input-instance" style="width:70%;">
+      <option value="brightness">💡 Яркость</option>
+      <option value="volume">🔊 Громкость</option>
+      <option value="channel">📺 Канал</option>
+      <option value="humidity">💧 Влажность</option>
+      <option value="open">🚪 Открытие</option>
+      <option value="temperature">🌡 Температура</option>
+    </select>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small id="golc-range-desc" style="color:#aaa;"></small>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-unit"><i class="fa fa-balance-scale"></i> Единица</label>
+    <select id="node-input-unit" style="width:70%;"></select>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-min"><i class="fa fa-arrow-down"></i> Минимум</label>
+    <input type="number" id="node-input-min" style="width:70%;">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-max"><i class="fa fa-arrow-up"></i> Максимум</label>
+    <input type="number" id="node-input-max" style="width:70%;">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-precision"><i class="fa fa-step-forward"></i> Шаг</label>
+    <input type="number" id="node-input-precision" style="width:70%;">
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-retrievable" style="width:auto; margin-right:6px;">
+      <i class="fa fa-database"></i> Хранить значение
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small style="color:#aaa;">Если включено — нода вычисляет итог при относительных командах ("прибавь на 10")</small>
+  </div>
+
+  <div class="form-row" style="margin-top:8px;">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto; margin-right:6px;">
+      <i class="fa fa-check-circle"></i> Авто-ответ Алисе
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small style="color:#aaa;">Если устройство не ответит за 2 сек — Алисе отправится авто-подтверждение</small>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="range-golc">
+  <p>Нода управления диапазонными параметрами устройства Алисы (яркость, громкость, температура и т.д.).</p>
+
+  <h3>Входящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">number</span></dt>
+    <dd>Числовое значение параметра для отправки в бэкенд.</dd>
+    <dt>msg.relative <span class="property-type">boolean</span></dt>
+    <dd>Если <code>true</code> — значение относительное ("прибавь на X"). Нода сама вычислит абсолютное значение (требует включённого "Хранить значение").</dd>
+    <dt>msg.deviceId <span class="property-type">string</span></dt>
+    <dd>Переопределяет ID устройства из профиля.</dd>
+  </dl>
+
+  <h3>Исходящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">number</span></dt>
+    <dd>Итоговое абсолютное значение (уже вычисленное).</dd>
+    <dt>msg.relative <span class="property-type">boolean</span></dt>
+    <dd>Была ли входящая команда относительной.</dd>
+  </dl>
+
+  <h3>Типы диапазона</h3>
+  <ul>
+    <li><b>Яркость</b> — 0–100%, шаг 10</li>
+    <li><b>Громкость</b> — настраиваемый диапазон</li>
+    <li><b>Канал</b> — 1–1000, шаг 1</li>
+    <li><b>Влажность</b> — 0–100%</li>
+    <li><b>Открытие</b> — 0–100%</li>
+    <li><b>Температура</b> — с выбором °C или K</li>
+  </ul>
+</script>

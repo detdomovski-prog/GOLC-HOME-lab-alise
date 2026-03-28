@@ -1,0 +1,133 @@
+<!-- ===== НОДА: on-off-golc ===== -->
+<script type="text/javascript">
+  RED.nodes.registerType('on-off-golc', {
+    category:    'golchomelab',
+    color:       '#5cba47',
+    defaults: {
+      name:          { value: '' },
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      splitButton:   { value: false },
+      alwaysSuccess: { value: true }
+    },
+    inputs:  1,
+    outputs: 1,
+    icon:    'golc.png',
+    paletteLabel: 'вкл/выкл',
+    label: function () {
+      if (this.name) return this.name;
+      const profileNode = RED.nodes.node(this.deviceProfile);
+      if (profileNode) {
+        const room = profileNode.deviceRoom || '';
+        const name = profileNode.deviceName || '';
+        return room && name ? room + ':' + name : (name || 'вкл/выкл');
+      }
+      return 'вкл/выкл';
+    },
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : '';
+    },
+    oneditprepare: function () {
+      // Иконки для splitButton: переключатель / кнопка
+      function syncSplitIcon() {
+        const isSplit = $('#node-input-splitButton').prop('checked');
+        $('#golc-split-desc').text(
+          isSplit
+            ? '🔘 Режим КНОПКА — любой входящий сигнал = нажатие (button_pressed)'
+            : '🔁 Режим ПЕРЕКЛЮЧАТЕЛЬ — msg.payload on/off управляет устройством'
+        );
+      }
+      $('#node-input-splitButton').on('change', syncSplitIcon);
+      syncSplitIcon();
+
+      function syncResponseDesc() {
+        const isAuto = $('#node-input-alwaysSuccess').prop('checked');
+        $('#golc-response-desc').text(
+          isAuto
+            ? '⏱ Если устройство не ответит за 2 сек — Алисе будет отправлен авто-ответ "ОК"'
+            : '⌛ Нода ждёт ответа от устройства. Если нет ответа — ошибка.'
+        );
+      }
+      $('#node-input-alwaysSuccess').on('change', syncResponseDesc);
+      syncResponseDesc();
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="on-off-golc">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Имя</label>
+    <input type="text" id="node-input-name" placeholder="Необязательное имя ноды">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-deviceProfile"><i class="fa fa-microchip"></i> Устройство</label>
+    <input type="text" id="node-input-deviceProfile">
+  </div>
+
+  <hr/>
+
+  <div class="form-row" style="margin-bottom:2px;">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-splitButton" style="width:auto; margin-right:6px;">
+      <i class="fa fa-toggle-on"></i> Режим кнопки
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:0;">
+    <small id="golc-split-desc" style="color:#aaa;"></small>
+  </div>
+
+  <div class="form-row" style="margin-bottom:2px; margin-top:12px;">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto; margin-right:6px;">
+      <i class="fa fa-check-circle"></i> Авто-ответ Алисе
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:0;">
+    <small id="golc-response-desc" style="color:#aaa;"></small>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="on-off-golc">
+  <p>Нода управления устройством Алисы — только вкл/выкл.</p>
+
+  <h3>Входящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">boolean | string | number</span></dt>
+    <dd>
+      Состояние устройства: <code>true</code>/<code>false</code>,
+      <code>"on"</code>/<code>"off"</code>, <code>1</code>/<code>0</code>.
+    </dd>
+    <dt>msg.command <span class="property-type">string</span></dt>
+    <dd>Альтернативно: <code>"on"</code> или <code>"off"</code>. Имеет приоритет над <code>payload</code>.</dd>
+    <dt>msg.deviceId <span class="property-type">string</span></dt>
+    <dd>Переопределяет ID устройства из профиля.</dd>
+  </dl>
+
+  <h3>Исходящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">object</span></dt>
+    <dd>Ответ от бэкенда или <code>{ status: "ok", source: "auto-response" }</code> при авто-ответе.</dd>
+    <dt>msg.statusCode <span class="property-type">number</span></dt>
+    <dd>HTTP-статус ответа бэкенда.</dd>
+    <dt>msg.aliceResponse <span class="property-type">object</span></dt>
+    <dd>Заполняется при авто-ответе: <code>{ status: "ok" }</code>.</dd>
+  </dl>
+
+  <h3>Режим кнопки (Split button)</h3>
+  <p>
+    Когда чекбокс <b>выключен</b> — нода работает как <b>переключатель</b>:
+    входящий сигнал определяет включить или выключить устройство.
+  </p>
+  <p>
+    Когда чекбокс <b>включён</b> — нода работает как <b>кнопка</b>:
+    любой входящий сигнал отправляет событие нажатия (<code>button_pressed</code>)
+    согласно документации Яндекс Алисы.
+  </p>
+
+  <h3>Авто-ответ Алисе (Response)</h3>
+  <p>
+    Если устройство не ответило в течение <b>2 секунд</b>, нода автоматически
+    возвращает Алисе подтверждение успеха, чтобы навык не завис.
+    Рекомендуется включить для медленных или ненадёжных устройств.
+  </p>
+</script>

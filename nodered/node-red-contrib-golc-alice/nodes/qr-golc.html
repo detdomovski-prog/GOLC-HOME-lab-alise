@@ -1,0 +1,113 @@
+<script type="text/javascript">
+  RED.nodes.registerType('qr-golc', {
+    category: 'golchomelab',
+    color: '#fc3f1d',
+    defaults: {
+      name:     { value: '' },
+      title:    { value: 'QR авторизация' },
+      width:    { value: 300, validate: RED.validators.number() },
+      height:   { value: 300, validate: RED.validators.number() },
+      bgColor:  { value: '#ffffff' },
+      fgColor:  { value: '#000000' },
+      autoOpen: { value: true }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'qr-golc.svg',
+    label: function () {
+      return this.name || 'QR код';
+    },
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : '';
+    },
+    oneditprepare: function () {
+      // Показать ссылку на страницу QR
+      const nodeId = this.id;
+      const $link = $('#golc-qr-open-link');
+      if (nodeId && nodeId !== '__') {
+        const url = window.location.origin + RED.settings.httpAdminRoot.replace(/\/$/, '') + '/golc-qr/' + nodeId;
+        $link.attr('href', url).text(url).show();
+        $('#golc-qr-link-row').show();
+      } else {
+        $('#golc-qr-link-row').hide();
+      }
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="qr-golc">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Имя</label>
+    <input type="text" id="node-input-name" placeholder="QR код">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-title"><i class="fa fa-header"></i> Заголовок страницы</label>
+    <input type="text" id="node-input-title" placeholder="QR авторизация">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-width"><i class="fa fa-arrows-h"></i> Ширина px</label>
+    <input type="number" id="node-input-width" style="width:100px" min="100" max="1000">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-height"><i class="fa fa-arrows-v"></i> Высота px</label>
+    <input type="number" id="node-input-height" style="width:100px" min="100" max="1000">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-bgColor"><i class="fa fa-square-o"></i> Фон</label>
+    <input type="color" id="node-input-bgColor" style="width:80px; height:32px; padding:2px">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-fgColor"><i class="fa fa-square"></i> Цвет QR</label>
+    <input type="color" id="node-input-fgColor" style="width:80px; height:32px; padding:2px">
+  </div>
+
+  <div class="form-row">
+    <label><i class="fa fa-check-square-o"></i> Авто-обновление</label>
+    <input type="checkbox" id="node-input-autoOpen" style="width:auto;margin-left:4px">
+    <span style="font-size:12px;color:#888;margin-left:8px">(страница перезагружается если QR ещё не пришёл)</span>
+  </div>
+
+  <div class="form-row" id="golc-qr-link-row" style="display:none">
+    <label><i class="fa fa-qrcode"></i> Страница QR</label>
+    <a id="golc-qr-open-link" href="#" target="_blank" style="font-size:12px;word-break:break-all"></a>
+  </div>
+
+  <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px;margin-top:12px;font-size:12px;color:#856404">
+    <b>Как использовать:</b><br>
+    Подключи выход ноды <b>golchomelab-auth</b> (в режиме «device_code») к входу этой ноды.<br>
+    Нода покажет QR-страницу по адресу <code>/golc-qr/&lt;id ноды&gt;</code>.<br>
+    После деплоя открой ссылку выше и отсканируй QR смартфоном.<br>
+    <br>
+    <b>Входящие поля:</b>
+    <code>msg.qrText</code> / <code>msg.verification_url</code> / <code>msg.payload</code> (строка URL)
+  </div>
+</script>
+
+<script type="text/html" data-help-name="qr-golc">
+  <p>Рендерит QR-код для авторизации Яндекса через устройство (device flow).</p>
+
+  <h3>Вход</h3>
+  <dl class="message-properties">
+    <dt>qrText <span class="property-type">string</span></dt>
+    <dd>URL для QR-кода (от golchomelab-auth device_code)</dd>
+    <dt>verification_url <span class="property-type">string</span></dt>
+    <dd>Альтернативное поле URL</dd>
+    <dt>user_code <span class="property-type">string</span></dt>
+    <dd>Код пользователя (отображается под QR)</dd>
+    <dt>payload <span class="property-type">string</span></dt>
+    <dd>Прямая ссылка (если используется как самостоятельная нода)</dd>
+  </dl>
+
+  <h3>Выход</h3>
+  <p>Передаёт входящее сообщение без изменений.</p>
+
+  <h3>QR страница</h3>
+  <p>После деплоя страница доступна по адресу:<br>
+  <code>/golc-qr/&lt;node-id&gt;</code></p>
+  <p>Страница автоматически обновляется каждые 5 секунд если URL ещё не получен.</p>
+</script>

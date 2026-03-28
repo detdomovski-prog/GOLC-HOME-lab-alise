@@ -1,0 +1,158 @@
+<!-- ===== НОДА: sensor-golc ===== -->
+<script type="text/javascript">
+  var GOLC_SENSOR_PRESETS = {
+    amperage:          { unit: ['unit.ampere'], label: 'Ток (A)' },
+    battery_level:     { unit: ['unit.percent'], label: 'Заряд батареи (%)' },
+    co2_level:         { unit: ['unit.ppm'], label: 'CO2 (ppm)' },
+    food_level:        { unit: ['unit.percent'], label: 'Уровень корма (%)' },
+    humidity:          { unit: ['unit.percent'], label: 'Влажность (%)' },
+    illumination:      { unit: ['unit.illumination.lux'], label: 'Освещённость (lux)' },
+    pm1_density:       { unit: ['unit.density.mcg_m3'], label: 'PM1 (μg/m³)' },
+    'pm2.5_density':   { unit: ['unit.density.mcg_m3'], label: 'PM2.5 (μg/m³)' },
+    pm10_density:      { unit: ['unit.density.mcg_m3'], label: 'PM10 (μg/m³)' },
+    power:             { unit: ['unit.watt'], label: 'Мощность (W)' },
+    pressure:          { unit: ['unit.pressure.atm', 'unit.pressure.pascal', 'unit.pressure.bar', 'unit.pressure.mmhg'], label: 'Давление' },
+    temperature:       { unit: ['unit.temperature.celsius', 'unit.temperature.kelvin'], label: 'Температура' },
+    tvoc:              { unit: ['unit.density.mcg_m3'], label: 'TVOC (μg/m³)' },
+    voltage:           { unit: ['unit.volt'], label: 'Напряжение (V)' },
+    water_level:       { unit: ['unit.percent'], label: 'Уровень воды (%)' },
+    electricity_meter: { unit: ['unit.kilowatt_hour'], label: 'Электросчётчик (kW⋅h)' },
+    gas_meter:         { unit: ['unit.cubic_meter'], label: 'Газовый счётчик (m³)' },
+    heat_meter:        { unit: ['unit.gigacalorie'], label: 'Теплосчётчик (Gcal)' },
+    water_meter:       { unit: ['unit.cubic_meter'], label: 'Водосчётчик (m³)' },
+    meter:             { unit: ['unit.number'], label: 'Универсальный счётчик' }
+  };
+
+  RED.nodes.registerType('sensor-golc', {
+    category: 'golchomelab',
+    color: '#6ea8fe',
+    defaults: {
+      name: { value: '' },
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      instance: { value: 'temperature', required: true },
+      unit: { value: 'unit.temperature.celsius', required: true },
+      alwaysSuccess: { value: true }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'golc.png',
+    paletteLabel: 'датчик',
+    label: function () {
+      if (this.name) return this.name;
+      var profileNode = RED.nodes.node(this.deviceProfile);
+      var deviceLabel = profileNode ? (profileNode.deviceRoom + ':' + profileNode.deviceName) : 'устройство';
+      return deviceLabel + ' [' + (this.instance || 'sensor') + ']';
+    },
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : '';
+    },
+    oneditprepare: function () {
+      var self = this;
+
+      function setupUnits(instance, keepValue) {
+        var preset = GOLC_SENSOR_PRESETS[instance] || GOLC_SENSOR_PRESETS.temperature;
+        var units = preset.unit || ['unit.number'];
+        var $unit = $('#node-input-unit');
+
+        $unit.empty();
+        units.forEach(function (u) {
+          $unit.append('<option value="' + u + '">' + u + '</option>');
+        });
+
+        if (keepValue && self.unit && units.indexOf(self.unit) > -1) {
+          $unit.val(self.unit);
+        } else {
+          $unit.val(units[0]);
+        }
+
+        $unit.prop('disabled', units.length === 1);
+        $('#golc-sensor-desc').text(preset.label || '');
+      }
+
+      setupUnits($('#node-input-instance').val(), true);
+
+      $('#node-input-instance').on('change', function () {
+        setupUnits($(this).val(), false);
+      });
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="sensor-golc">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Имя</label>
+    <input type="text" id="node-input-name" placeholder="Необязательное имя">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-deviceProfile"><i class="fa fa-microchip"></i> Устройство</label>
+    <input type="text" id="node-input-deviceProfile">
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label for="node-input-instance"><i class="fa fa-thermometer-half"></i> Тип датчика</label>
+    <select id="node-input-instance" style="width:70%;">
+      <option value="temperature">🌡 Температура</option>
+      <option value="humidity">💧 Влажность</option>
+      <option value="pressure">📈 Давление</option>
+      <option value="illumination">💡 Освещённость</option>
+      <option value="co2_level">🫧 CO2</option>
+      <option value="tvoc">🌫 TVOC</option>
+      <option value="battery_level">🔋 Заряд батареи</option>
+      <option value="amperage">⚡ Ток</option>
+      <option value="voltage">🔌 Напряжение</option>
+      <option value="power">🔆 Мощность</option>
+      <option value="water_level">🚰 Уровень воды</option>
+      <option value="food_level">🥣 Уровень корма</option>
+      <option value="pm1_density">🌬 PM1</option>
+      <option value="pm2.5_density">🌬 PM2.5</option>
+      <option value="pm10_density">🌬 PM10</option>
+      <option value="electricity_meter">⚙️ Электросчётчик</option>
+      <option value="gas_meter">⚙️ Газовый счётчик</option>
+      <option value="heat_meter">⚙️ Теплосчётчик</option>
+      <option value="water_meter">⚙️ Водосчётчик</option>
+      <option value="meter">⚙️ Универсальный счётчик</option>
+    </select>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small id="golc-sensor-desc" style="color:#aaa;"></small>
+  </div>
+
+  <div class="form-row" style="margin-top:10px;">
+    <label for="node-input-unit"><i class="fa fa-balance-scale"></i> Единица</label>
+    <select id="node-input-unit" style="width:70%;"></select>
+  </div>
+
+  <hr/>
+
+  <div class="form-row">
+    <label style="width:auto; margin-right:8px;">
+      <input type="checkbox" id="node-input-alwaysSuccess" style="width:auto; margin-right:6px;">
+      <i class="fa fa-check-circle"></i> Авто-ответ Алисе
+    </label>
+  </div>
+  <div class="form-row" style="margin-left:120px; margin-top:-4px;">
+    <small style="color:#aaa;">Если устройство не ответит за 2 сек — Алисе отправится авто-подтверждение.</small>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="sensor-golc">
+  <p>Нода передачи числовых значений датчиков в backend умного дома.</p>
+
+  <h3>Входящий <code>msg</code></h3>
+  <dl class="message-properties">
+    <dt>msg.payload <span class="property-type">number</span></dt>
+    <dd>Числовое значение датчика.</dd>
+    <dt>msg.deviceId <span class="property-type">string</span></dt>
+    <dd>Переопределяет ID устройства из профиля.</dd>
+  </dl>
+
+  <h3>Особенности</h3>
+  <ul>
+    <li>Округление зависит от единицы: для <code>unit.temperature.celsius</code>, <code>unit.ampere</code>, <code>unit.pressure.bar</code> — 1 знак после запятой, для остальных — до целого.</li>
+    <li>Повтор того же значения не отправляется чаще одного раза в 10 минут.</li>
+    <li>Данные отправляются на endpoint <code>/internal/devices/:id/state</code>.</li>
+  </ul>
+</script>

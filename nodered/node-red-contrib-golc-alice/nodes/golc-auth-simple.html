@@ -1,0 +1,137 @@
+<script type="text/javascript">
+  RED.nodes.registerType('golc-auth-simple', {
+    category: 'golchomelab',
+    color: '#ffd86b',
+    defaults: {
+      name: { value: '' },
+      backendUrl: { value: 'https://alice.golchomelab.kz' },
+      username: { value: '', required: true }
+    },
+    credentials: {
+      password: { type: 'password' },
+      accessToken: { type: 'password' },
+      userId: { type: 'text' }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'golc.png',
+    paletteLabel: 'golc-auth-simple',
+    label: function () {
+      return this.name || 'golc-auth-simple';
+    },
+    oneditprepare: function () {
+      if (!$('#node-input-backendUrl').val()) {
+        $('#node-input-backendUrl').val('https://alice.golchomelab.kz');
+      }
+
+      $('#golc-auth-simple-btn-login').on('click', async function (event) {
+        event.preventDefault();
+
+        const username = ($('#node-input-username').val() || '').trim();
+        const password = ($('#node-input-password').val() || '').trim();
+        const backendUrl = (($('#node-input-backendUrl').val() || 'https://alice.golchomelab.kz').trim()).replace(/\/$/, '');
+
+        if (!username || !password) {
+          RED.notify('Укажи логин и пароль', { type: 'error' });
+          return;
+        }
+
+        try {
+          const response = await fetch(`${backendUrl}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (_err) {
+            data = {};
+          }
+
+          if (!response.ok || !data.ok || !data.access_token) {
+            RED.notify(`Ошибка: ${(data && data.error) || response.statusText || 'auth failed'}`, { type: 'error' });
+            return;
+          }
+
+          $('#node-input-accessToken').val(data.access_token).trigger('change');
+          $('#node-input-userId').val(data.user_id || '').trigger('change');
+          $('#golc-auth-simple-status').text(data.user_id ? `✓ ${data.user_id}` : '✓ authorized');
+          RED.notify('✅ Авторизация успешна', { type: 'success' });
+        } catch (error) {
+          RED.notify(`Ошибка запроса: ${error.message}`, { type: 'error' });
+        }
+      });
+
+      const userId = $('#node-input-userId').val();
+      if (userId) {
+        $('#golc-auth-simple-status').text(`✓ ${userId}`);
+      }
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="golc-auth-simple">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Название</label>
+    <input type="text" id="node-input-name" placeholder="golc-auth-simple" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-username">Логин</label>
+    <input type="text" id="node-input-username" placeholder="admin" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-password">Пароль</label>
+    <input type="password" id="node-input-password" placeholder="пароль" />
+  </div>
+
+  <div class="form-row">
+    <button id="golc-auth-simple-btn-login" class="red-ui-button" style="background-color: #4CAF50;">
+      🔐 Login
+    </button>
+  </div>
+
+  <div class="form-tips" style="margin-bottom: 12px;">
+    В обычном режиме достаточно только логина и пароля.
+  </div>
+
+  <details style="margin: 8px 0 12px 0;">
+    <summary style="cursor:pointer;">Дополнительно (Backend URL)</summary>
+    <div class="form-row" style="margin-top:8px;">
+      <label for="node-input-backendUrl">Backend URL</label>
+      <input type="text" id="node-input-backendUrl" placeholder="https://alice.golchomelab.kz" />
+    </div>
+    <div class="form-tips" style="margin-top:-8px;">
+      Меняй только если backend запущен не на этом адресе.
+    </div>
+  </details>
+
+  <hr>
+
+  <div class="form-row">
+    <p><b>Status:</b> <span id="golc-auth-simple-status" style="color: #999;">нет авторизации</span></p>
+  </div>
+
+  <div class="form-row" style="display:none;">
+    <label for="node-input-accessToken">Access Token</label>
+    <input type="password" id="node-input-accessToken" />
+  </div>
+
+  <div class="form-row" style="display:none;">
+    <label for="node-input-userId">User ID</label>
+    <input type="text" id="node-input-userId" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="golc-auth-simple">
+  <p><b>Простая авторизация для Node-RED</b></p>
+  <ol>
+    <li>Введи логин и пароль</li>
+    <li>Нажми <b>Login</b></li>
+    <li>Нода сохранит <code>access_token</code> и <code>user_id</code> локально</li>
+  </ol>
+  <p><code>Backend URL</code> спрятан в «Дополнительно» и обычно менять не нужно.</p>
+</script>

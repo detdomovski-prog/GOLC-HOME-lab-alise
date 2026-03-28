@@ -1,0 +1,141 @@
+<script type="text/javascript">
+  RED.nodes.registerType('video-golc', {
+    category: 'golchomelab',
+    defaults: {
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      name: { value: 'Видео' },
+      protocol: { value: 'hls' },
+      streamUrl: { value: '', required: true }
+    },
+    inputs: 0,
+    outputs: 0,
+    icon: 'golc.png',
+    color: '#4DB8FF',
+    label: function() {
+      return this.name;
+    },
+    oneditprepare: function() {
+      const node = this;
+
+      // Обновляем имя ноды при сохранении
+      const updateName = () => {
+        const deviceName = $('#node-input-deviceProfile option:selected').text();
+        const urlPreview = $('#node-input-streamUrl').val().length > 20 
+          ? $('#node-input-streamUrl').val().substring(0, 17) + '...' 
+          : $('#node-input-streamUrl').val();
+        $('#node-input-name').val(`${deviceName} 📹 ${urlPreview}`);
+      };
+
+      // Обновляем при изменении профиля или URL
+      $('#node-input-deviceProfile').on('change', updateName);
+      $('#node-input-streamUrl').on('change', updateName);
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="video-golc">
+  <div class="form-row">
+    <label for="node-input-deviceProfile">Профиль устройства</label>
+    <input type="text" id="node-input-deviceProfile" placeholder="device-profile-golc">
+  </div>
+  <div class="form-row">
+    <label for="node-input-name">Название ноды</label>
+    <input type="text" id="node-input-name" placeholder="Видео">
+  </div>
+  <div class="form-row">
+    <label for="node-input-protocol">Протокол</label>
+    <input type="text" id="node-input-protocol" style="width: 250px;" disabled value="HLS (только HLS поддерживается)">
+  </div>
+  <div class="form-row">
+    <label for="node-input-streamUrl">URL видео потока (HLS)</label>
+    <textarea id="node-input-streamUrl" style="width: 100%; height: 60px; font-family: monospace; font-size: 12px;"></textarea>
+  </div>
+  <div class="form-tips" id="node-tip" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-left: 4px solid #4DB8FF; border-radius: 3px;">
+    <p><strong>⚠️ Требования к потоку:</strong></p>
+    <ul style="margin: 5px 0; padding-left: 20px;">
+      <li>Протокол: <strong>HLS</strong> (m3u8 плейлист)</li>
+      <li>Видеокодек: <strong>H.264</strong></li>
+      <li>Максимальное разрешение: <strong>1920 × 1080</strong></li>
+      <li>Аудиокодек: <strong>AAC</strong></li>
+      <li>URL должен быть доступен из интернета</li>
+      <li>При запросе потока сервер должен вернуть заголовки:
+        <br/><code style="background: #fff; padding: 2px 5px;">Content-Type: application/vnd.apple.mpegurl</code>
+        <br/><code style="background: #fff; padding: 2px 5px;">Access-Control-Allow-Origin: https://yastatic.net</code>
+      </li>
+    </ul>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="video-golc">
+  <p><strong>Нода видео потока для устройств GOLC Alice</strong></p>
+  
+  <p>Регистрирует HLS видео поток с камеры устройства для доступа через Яндекс Алису.</p>
+
+  <h3>Параметры</h3>
+  <dl class="message-properties">
+    <dt>Профиль устройства
+      <span class="property-type">device-profile-golc</span>
+    </dt>
+    <dd>Ссылка на конфиг-ноду с данными устройства и бэкенда</dd>
+    <dt>Протокол
+      <span class="property-type">HLS</span>
+    </dt>
+    <dd>В настоящее время поддерживается только HLS (HTTP Live Streaming)</dd>
+    <dt>URL видео потока
+      <span class="property-type">string</span>
+    </dt>
+    <dd>Полный URL на m3u8 плейлист HLS потока (например: https://camera.example.com/stream.m3u8)</dd>
+  </dl>
+
+  <h3>Особенности</h3>
+  <ul>
+    <li><strong>Работа:</strong> Нода регистрирует видео поток в бэкенде при подключении и периодически обновляет состояние</li>
+    <li><strong>Входы/выходы:</strong> У ноды нет входов и выходов (конфиг-нода)</li>
+    <li><strong>Статус:</strong> Показывает URL потока (обрезано для краткости) и состояние соединения</li>
+    <li><strong>Таймаут:</strong> Если бэкенд не отвечает >2 сек, ноды переходит в режим ожидания</li>
+  </ul>
+
+  <h3>Требования к HLS потоку</h3>
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <th style="text-align: left; border-bottom: 1px solid #ccc; padding: 8px;">Параметр</th>
+      <th style="text-align: left; border-bottom: 1px solid #ccc; padding: 8px;">Значение</th>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">Видеокодек</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">H.264</td>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">Аудиокодек</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">AAC</td>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">Разрешение</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">Макс. 1920 × 1080</td>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">Доступность</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">URL доступен из интернета</td>
+    </tr>
+    <tr>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">CORS заголовки</td>
+      <td style="border-bottom: 1px solid #ddd; padding: 8px;">Access-Control-Allow-Origin: https://yastatic.net</td>
+    </tr>
+  </table>
+
+  <h3>Пример конфигурации</h3>
+  <pre>
+// Типичный HLS URL
+https://camera.example.com:8080/stream.m3u8
+
+// С параметрами (токен, ID устройства и т.д.)
+https://camera.example.com/live/stream.m3u8?token=abc123&device_id=cam01
+  </pre>
+
+  <h3>Документация</h3>
+  <ul>
+    <li><a href="https://yandex.ru/dev/dialogs/smart-home/doc/concepts/video_stream.html">Yandex — Video Stream Capability</a></li>
+    <li><a href="https://en.wikipedia.org/wiki/HTTP_Live_Streaming">HTTP Live Streaming (HLS)</a></li>
+    <li><a href="https://github.com/detdomovski-prog/GOLC-HOME-lab-alise">GOLC HOME на GitHub</a></li>
+  </ul>
+</script>

@@ -1,0 +1,278 @@
+<script type="text/javascript">
+  RED.nodes.registerType('color-golc', {
+    category: 'golchomelab',
+    defaults: {
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      name: { value: 'Цвет' },
+      colorSupport: { value: true },
+      scheme: { value: 'rgb' },
+      tempSupport: { value: false },
+      tempMin: { value: 2000, validate: function(v) { return parseInt(v) >= 2000; } },
+      tempMax: { value: 9000, validate: function(v) { return parseInt(v) <= 9000; } },
+      scenes: { value: [] },
+      alwaysSuccess: { value: false }
+    },
+    inputs: 1,
+    outputs: 3,
+    outputLabels: ['🎨 Цвет', '🌡️ Температура', '🎭 Сцена'],
+    icon: 'golc.png',
+    color: '#FF6B6B',
+    label: function() {
+      return this.name;
+    },
+    oneditprepare: function() {
+      const node = this;
+
+      // Инициализация чекбоксов по умолчанию
+      if (this.colorSupport === undefined) {
+        $('#node-input-colorSupport').prop('checked', true);
+      }
+      if (this.tempMin === undefined) {
+        $('#node-input-tempMin').val(2000);
+      }
+      if (this.tempMax === undefined) {
+        $('#node-input-tempMax').val(9000);
+      }
+
+      // Селектор схемы цвета
+      $('#node-input-colorSupport').on('change', function() {
+        if ($(this).is(':checked')) {
+          $('#node-input-scheme').prop('disabled', false);
+        } else {
+          $('#node-input-scheme').prop('disabled', true);
+        }
+      });
+
+      // Параметры белой температуры
+      $('#node-input-tempSupport').on('change', function() {
+        if ($(this).is(':checked')) {
+          $('#node-input-tempMin').prop('disabled', false);
+          $('#node-input-tempMax').prop('disabled', false);
+        } else {
+          $('#node-input-tempMin').prop('disabled', true);
+          $('#node-input-tempMax').prop('disabled', true);
+        }
+      });
+
+      // Инициализация списка сцен
+      const VALID_SCENES = [
+        'alarm', 'alice', 'candle', 'dinner', 'fantasy', 'garland',
+        'jungle', 'movie', 'neon', 'night', 'ocean', 'party',
+        'reading', 'rest', 'romance', 'siren', 'sunrise', 'sunset'
+      ];
+
+      // Редактируемый список сцен
+      $('#node-input-scenes-list').editableList({
+        addButton: false,
+        height: 150,
+        addItem: function(container, i, data) {
+          $(`<div style="padding: 5px;"><strong>${data}</strong></div>`).appendTo(container);
+        }
+      });
+
+      // Загружаем текущие сцены
+      if (node.scenes && node.scenes.length > 0) {
+        $('#node-input-scenes-list').editableList('empty');
+        node.scenes.forEach(scene => {
+          $('#node-input-scenes-list').editableList('addItems', [scene]);
+        });
+      }
+
+      // Кнопка добавления сцены
+      $('#node-add-scene-btn').on('click', function(e) {
+        e.preventDefault();
+        const selected = $('#node-input-scene-select').val();
+        const currentScenes = [];
+        $('#node-input-scenes-list').editableList('items').each(function() {
+          currentScenes.push($(this).text().trim());
+        });
+        if (selected && !currentScenes.includes(selected)) {
+          $('#node-input-scenes-list').editableList('addItems', [selected]);
+        }
+      });
+    },
+    oneditsave: function() {
+      // Сохраняем список сцен
+      const scenes = [];
+      $('#node-input-scenes-list').editableList('items').each(function() {
+        scenes.push($(this).text().trim());
+      });
+      this.scenes = scenes;
+
+      // Обновляем имя ноды
+      const deviceName = $('#node-input-deviceProfile option:selected').text();
+      $('#node-input-name').val(`${deviceName} 🎨`);
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="color-golc">
+  <div class="form-row">
+    <label for="node-input-deviceProfile">Профиль устройства</label>
+    <input type="text" id="node-input-deviceProfile" placeholder="device-profile-golc">
+  </div>
+  <div class="form-row">
+    <label for="node-input-name">Название ноды</label>
+    <input type="text" id="node-input-name" placeholder="Цвет">
+  </div>
+
+  <!-- Управление цветом RGB/HSV -->
+  <div class="form-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-colorSupport" style="display: inline-block; width: 20px; margin-right: 10px;">
+    <label for="node-input-colorSupport" style="width: auto;">Поддержка смены цвета</label>
+  </div>
+  <div class="form-row">
+    <label for="node-input-scheme">Схема цвета</label>
+    <select id="node-input-scheme" style="width: 250px;">
+      <option value="rgb">RGB (красный-зелёный-синий)</option>
+      <option value="hsv">HSV (оттенок-насыщение-яркость)</option>
+    </select>
+  </div>
+
+  <!-- Белая температура -->
+  <div class="form-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-tempSupport" style="display: inline-block; width: 20px; margin-right: 10px;">
+    <label for="node-input-tempSupport" style="width: auto;">Поддержка белой температуры (K)</label>
+  </div>
+  <div class="form-row">
+    <label for="node-input-tempMin" style="width: 40%;">Диапазон: Min</label>
+    <input type="number" id="node-input-tempMin" style="width: 100px;" min="2000" max="9000">
+    <span style="margin-left: 10px;">K — Max</span>
+    <input type="number" id="node-input-tempMax" style="width: 100px; margin-left: 10px;" min="2000" max="9000">
+    <span style="margin-left: 10px;">K</span>
+  </div>
+
+  <!-- Цветовые сцены -->
+  <div class="form-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+    <label style="width: auto;">Цветовые сцены</label>
+  </div>
+  <div class="form-row">
+    <label style="width: 40%;">Список активных сцен</label>
+    <ol id="node-input-scenes-list" style="width: 300px; height: 150px; overflow-y: auto; margin-top: 10px;"></ol>
+  </div>
+  <div class="form-row">
+    <label style="width: 40%;"></label>
+    <select id="node-input-scene-select" style="width: 300px;">
+      <option value="">— добавить сцену —</option>
+      <option value="alarm">alarm 🚨 (тревога)</option>
+      <option value="alice">alice 💜 (Алиса)</option>
+      <option value="candle">candle 🕯️ (свеча)</option>
+      <option value="dinner">dinner 🍽️ (обед)</option>
+      <option value="fantasy">fantasy 🧙 (фантазия)</option>
+      <option value="garland">garland 🎄 (гирлянда)</option>
+      <option value="jungle">jungle 🌿 (джунгли)</option>
+      <option value="movie">movie 🎬 (кино)</option>
+      <option value="neon">neon ⚡ (неон)</option>
+      <option value="night">night 🌙 (ночь)</option>
+      <option value="ocean">ocean 🌊 (океан)</option>
+      <option value="party">party 🎉 (вечеринка)</option>
+      <option value="reading">reading 📖 (чтение)</option>
+      <option value="rest">rest 😴 (отдых)</option>
+      <option value="romance">romance 💕 (романтика)</option>
+      <option value="siren">siren 🚨 (сирена)</option>
+      <option value="sunrise">sunrise 🌅 (восход)</option>
+      <option value="sunset">sunset 🌅 (закат)</option>
+    </select>
+    <button id="node-add-scene-btn" class="red-ui-button" style="margin-left: 10px;">Добавить</button>
+  </div>
+
+  <div class="form-row" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-alwaysSuccess" style="display: inline-block; width: 20px; margin-right: 10px;">
+    <label for="node-input-alwaysSuccess" style="width: auto;">Авто-ответ Алисе при таймауте</label>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="color-golc">
+  <p><strong>Нода управления цветом для устройств GOLC Alice</strong></p>
+  
+  <p>Управляет цветом светящихся элементов устройства, включая RGB/HSV, белую температуру и цветовые сцены.</p>
+
+  <h3>Параметры</h3>
+  <dl class="message-properties">
+    <dt>Профиль устройства
+      <span class="property-type">device-profile-golc</span>
+    </dt>
+    <dd>Ссылка на конфиг-ноду с данными устройства и бэкенда</dd>
+    <dt>Поддержка смены цвета
+      <span class="property-type">boolean</span>
+    </dt>
+    <dd>Включить управление RGB или HSV цветом</dd>
+    <dt>Схема цвета
+      <span class="property-type">rgb | hsv</span>
+    </dt>
+    <dd>RGB — красный/зелёный/синий (0-255), HSV — оттенок (0-360°) / насыщение (0-100%) / яркость (0-100%)</dd>
+    <dt>Белая температура
+      <span class="property-type">boolean</span>
+    </dt>
+    <dd>Включить управление белой температурой (от 2000K до 9000K)</dd>
+    <dt>Цветовые сцены
+      <span class="property-type">список</span>
+    </dt>
+    <dd>Предустановленные сцены освещения (alarm, alice, candle, dinner, fantasy, garland, jungle, movie, neon, night, ocean, party, reading, rest, romance, siren, sunrise, sunset)</dd>
+  </dl>
+
+  <h3>Входные сообщения</h3>
+  <dl class="message-properties">
+    <dt>payload (RGB объект)
+      <span class="property-type">{ r: 0-255, g: 0-255, b: 0-255 }</span>
+    </dt>
+    <dd>Отправить RGB цвет (требует RGB выбранной схемой)</dd>
+    <dt>payload (HSV объект)
+      <span class="property-type">{ h: 0-360, s: 0-100, v: 0-100 }</span>
+    </dt>
+    <dd>Отправить HSV цвет (требует HSV выбранной схемой)</dd>
+    <dt>payload (число)
+      <span class="property-type">2000-9000</span>
+    </dt>
+    <dd>Отправить белую температуру в Кельвинах (требует включённой поддержки)</dd>
+    <dt>payload (строка)
+      <span class="property-type">scene name</span>
+    </dt>
+    <dd>Активировать сцену освещения (требует сцены в списке)</dd>
+    <dt>deviceId (опционально)
+      <span class="property-type">строка</span>
+    </dt>
+    <dd>Переопределить ID устройства (берётся из профиля если не указан)</dd>
+  </dl>
+
+  <h3>Выходные сообщения</h3>
+  <p>У ноды <strong>3 выходных порта</strong>:</p>
+  <dl class="message-properties">
+    <dt>Порт 1: 🎨 Цвет
+      <span class="property-type">объект | null</span>
+    </dt>
+    <dd>RGB или HSV объект при смене цвета; null если другое значение отправлено</dd>
+    <dt>Порт 2: 🌡️ Температура
+      <span class="property-type">число | null</span>
+    </dt>
+    <dd>Белая температура (K) при смене; null если другое значение отправлено</dd>
+    <dt>Порт 3: 🎭 Сцена
+      <span class="property-type">строка | null</span>
+    </dt>
+    <dd>Название сцены при активации; null если другое значение отправлено</dd>
+  </dl>
+
+  <h3>Примеры</h3>
+  <pre>
+// RGB цвет (красный)
+{ payload: { r: 255, g: 0, b: 0 } }
+
+// HSV цвет (синий, 100% насыщение, 100% яркость)
+{ payload: { h: 240, s: 100, v: 100 } }
+
+// Белая температура (тёплый белый, 3000K)
+{ payload: 3000 }
+
+// Цветовая сцена
+{ payload: "movie" }
+  </pre>
+
+  <h3>Документация</h3>
+  <ul>
+    <li><a href="https://yandex.ru/dev/dialogs/smart-home/doc/concepts/color_setting.html">Yandex — Color Setting Capability</a></li>
+    <li><a href="https://github.com/detdomovski-prog/GOLC-HOME-lab-alise">GOLC HOME на GitHub</a></li>
+  </ul>
+</script>

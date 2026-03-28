@@ -1,0 +1,202 @@
+<script type="text/javascript">
+  const GOLC_EVENT_PRESETS = {
+    button: { events: ['click', 'double_click', 'long_press'], icon: '🔘' },
+    motion: { events: ['detected', 'not_detected'], icon: '🚨' },
+    open: { events: ['opened', 'closed'], icon: '🚪' },
+    vibration: { events: ['tilt', 'fall', 'vibration'], icon: '📳' },
+    smoke: { events: ['detected', 'not_detected', 'high'], icon: '💨' },
+    gas: { events: ['detected', 'not_detected', 'high'], icon: '⚠️' },
+    battery_level: { events: ['low', 'normal'], icon: '🔋' },
+    water_level: { events: ['low', 'normal'], icon: '💧' },
+    water_leak: { events: ['dry', 'leak'], icon: '💦' }
+  };
+
+  RED.nodes.registerType('event-golc', {
+    category: 'golchomelab',
+    defaults: {
+      deviceProfile: { value: '', type: 'device-profile-golc', required: true },
+      name: { value: 'Событие' },
+      instance: { value: 'button', required: true },
+      events: { value: ['click', 'double_click', 'long_press'] },
+      alwaysSuccess: { value: false }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'golc.png',
+    color: '#FDD835',
+    label: function() {
+      return this.name;
+    },
+    oneditprepare: function() {
+      const node = this;
+
+      // Инициализация селектора типа события
+      $('#node-input-instance').typedInput({
+        types: [
+          {
+            options: [
+              { value: 'button', label: '🔘 Кнопка' },
+              { value: 'motion', label: '🚨 Движение' },
+              { value: 'open', label: '🚪 Открытие' },
+              { value: 'vibration', label: '📳 Вибрация' },
+              { value: 'smoke', label: '💨 Дым' },
+              { value: 'gas', label: '⚠️ Газ' },
+              { value: 'battery_level', label: '🔋 Уровень батареи' },
+              { value: 'water_level', label: '💧 Уровень воды' },
+              { value: 'water_leak', label: '💦 Утечка воды' }
+            ]
+          }
+        ]
+      });
+
+      // При изменении типа события обновляем список разрешённых событий
+      $('#node-input-instance').on('change', function() {
+        const selected = $(this).val();
+        const preset = GOLC_EVENT_PRESETS[selected] || { events: [] };
+        
+        $('#node-input-eventslist').editableList('empty');
+        preset.events.forEach(evt => {
+          $('#node-input-eventslist').editableList('addItems', [evt]);
+        });
+
+        // Обновляем имя ноды
+        const deviceName = $('#node-input-deviceProfile option:selected').text();
+        const presetIcon = preset.icon || '';
+        $('#node-input-name').val(`${deviceName} ${presetIcon} ${selected}`);
+      });
+
+      // Инициализация редактируемого списка событий
+      $('#node-input-eventslist').editableList({
+        addButton: false,
+        height: 150,
+        addItem: function(container, i, data) {
+          $(`<div style="padding: 5px;">${data}</div>`).appendTo(container);
+        }
+      });
+
+      // Загружаем текущие события
+      if (node.events && node.events.length > 0) {
+        $('#node-input-eventslist').editableList('empty');
+        node.events.forEach(evt => {
+          $('#node-input-eventslist').editableList('addItems', [evt]);
+        });
+      } else {
+        // Инициализируем с дефолтным набором для кнопки
+        const preset = GOLC_EVENT_PRESETS['button'];
+        preset.events.forEach(evt => {
+          $('#node-input-eventslist').editableList('addItems', [evt]);
+        });
+      }
+    },
+    oneditsave: function() {
+      // Сохраняем список событий при сохранении конфигурации
+      const events = [];
+      $('#node-input-eventslist').editableList('items').each(function() {
+        events.push($(this).text().trim());
+      });
+      this.events = events;
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="event-golc">
+  <div class="form-row">
+    <label for="node-input-deviceProfile">Профиль устройства</label>
+    <input type="text" id="node-input-deviceProfile" placeholder="device-profile-golc">
+  </div>
+  <div class="form-row">
+    <label for="node-input-name">Название ноды</label>
+    <input type="text" id="node-input-name" placeholder="Событие">
+  </div>
+  <div class="form-row">
+    <label for="node-input-instance">Тип события</label>
+    <input type="text" id="node-input-instance">
+  </div>
+  <div class="form-row">
+    <label style="width: auto;">Разрешённые события</label>
+    <ol id="node-input-eventslist" style="margin-top: 10px;"></ol>
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-alwaysSuccess" style="display: inline-block; width: 20px; margin-right: 10px;">
+    <label for="node-input-alwaysSuccess" style="width: auto;">Авто-ответ Алисе при таймауте</label>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="event-golc">
+  <p><strong>Нода событий для устройств GOLC Alice</strong></p>
+  
+  <p>Отправляет события датчиков встроенных в устройство (нажатие кнопки, движение, открытие и т.д.).</p>
+
+  <h3>Параметры</h3>
+  <dl class="message-properties">
+    <dt>Профиль устройства
+      <span class="property-type">device-profile-golc</span>
+    </dt>
+    <dd>Ссылка на конфиг-ноду с данными устройства и бэкенда</dd>
+    <dt>Тип события
+      <span class="property-type">выбор</span>
+    </dt>
+    <dd>Категория события (кнопка, движение, открытие, вибрация и др.)</dd>
+    <dt>Разрешённые события
+      <span class="property-type">список</span>
+    </dt>
+    <dd>Значения событий, которые может отправлять датчик (автоматически заполняется при выборе типа)</dd>
+  </dl>
+
+  <h3>Входные сообщения</h3>
+  <dl class="message-properties">
+    <dt>payload
+      <span class="property-type">строка</span>
+    </dt>
+    <dd>Событие из списка разрешённых (например: "click", "detected", "opened")</dd>
+    <dt>deviceId (опционально)
+      <span class="property-type">строка</span>
+    </dt>
+    <dd>Переопределить ID устройства (берётся из профиля если не указан)</dd>
+  </dl>
+
+  <h3>Выходные сообщения</h3>
+  <dl class="message-properties">
+    <dt>payload
+      <span class="property-type">строка</span>
+    </dt>
+    <dd>Отправленное событие</dd>
+    <dt>statusCode
+      <span class="property-type">число</span>
+    </dt>
+    <dd>HTTP статус ответа бэкенда (200 = успешно)</dd>
+    <dt>backendResponse
+      <span class="property-type">объект</span>
+    </dt>
+    <dd>JSON ответ бэкенда (если получен)</dd>
+  </dl>
+
+  <h3>Особенности</h3>
+  <ul>
+    <li><strong>Автообнуление для кнопок:</strong> После отправки события кнопки значение автоматически обнуляется через 1 сек</li>
+    <li><strong>Авто-ответ:</strong> При таймауте бэкенда (>2 сек) можно отправить имитацию успеха Алисе</li>
+    <li><strong>Валидация:</strong> Событие проверяется на соответствие списку разрешённых перед отправкой</li>
+  </ul>
+
+  <h3>Примеры</h3>
+  <pre>
+// Событие кнопки
+{ payload: "click" }      // включить → обнулится через 1 сек
+{ payload: "long_press" } // долгое нажатие
+
+// Событие движения
+{ payload: "detected" }     // движение обнаружено
+{ payload: "not_detected" } // движение прекращено
+
+// Событие открытия
+{ payload: "opened" } // дверь открыта
+{ payload: "closed" } // дверь закрыта
+  </pre>
+
+  <h3>Документация</h3>
+  <ul>
+    <li><a href="https://yandex.ru/dev/dialogs/smart-home/doc/concepts/event.html">Yandex — Event Property (события)</a></li>
+    <li><a href="https://github.com/detdomovski-prog/GOLC-HOME-lab-alise">GOLC HOME на GitHub</a></li>
+  </ul>
+</script>
